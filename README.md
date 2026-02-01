@@ -42,7 +42,10 @@ https://www.figma.com/make/CxI03B2B15V6nULnvc7FGT/Customs-Auction-Service-App?p=
    - 검색 토큰 생성 (RAW/SYN/CATEGORY)
    - 영문 + 한글/동의어 검색 지원 (item_search_token)
 
-5. **Backend (예정)**
+5. **Frontend**
+   - Flutter 프론트엔드
+
+6. **Backend (예정)**
    - API 제공
    - 검색/필터/알림 기능 연동
 
@@ -67,6 +70,7 @@ CUSTOMS-ACCESS-IMPROVEMENT-SERVICE/
 │  ├─ queries.sql                      # 참고용 쿼리 모음
 │  ├─ feedback.sql                     # 실행 결과 검증 쿼리
 │  └─ README.md                        # DB 실행 순서/설계 근거
+├─ cais_frontend/                      # Flutter 프론트엔드
 ├─ backend/                            # API 서버 (예정)
 ├─ unipass_all.json                    # 수집 결과(JSON)
 └─ README.md
