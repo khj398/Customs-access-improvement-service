@@ -58,6 +58,56 @@ def infer_unit_kind(field: str) -> str:
     return "QTY" if field == "qty" else "WEIGHT"
 
 
+def _extract_image_urls(value: Any) -> list[str]:
+    urls: list[str] = []
+
+    def walk(v: Any) -> None:
+        if isinstance(v, dict):
+            for _, child in v.items():
+                walk(child)
+            return
+        if isinstance(v, list):
+            for child in v:
+                walk(child)
+            return
+        if not isinstance(v, str):
+            return
+
+        for m in re.findall(r"https?://[^\s\"'<>]+", v, flags=re.IGNORECASE):
+            low = m.lower()
+            if any(h in low for h in ("img", "image", "photo", "thumb")) or low.endswith((".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp")):
+                urls.append(m)
+
+    walk(value)
+    return list(dict.fromkeys(urls))
+
+
+def get_image_urls_from_record(r: dict) -> list[str]:
+    candidates = [
+        r.get("image_urls"),
+        r.get("imageUrls"),
+        r.get("imgUrls"),
+        r.get("images"),
+        r.get("imageList"),
+        r.get("imgList"),
+        r.get("imageUrl"),
+        r.get("imgUrl"),
+        r.get("thumbnailUrl"),
+    ]
+
+    urls: list[str] = []
+    for c in candidates:
+        if c is None:
+            continue
+        urls.extend(_extract_image_urls(c))
+
+    # 후보 키에 없어도, 레코드 전체에서 이미지 URL 힌트 스캔
+    if not urls:
+        urls.extend(_extract_image_urls(r))
+
+    return list(dict.fromkeys(urls))
+
+
 # =========================================================
 # UPSERT SQL
 # =========================================================
@@ -136,6 +186,17 @@ ON DUPLICATE KEY UPDATE
   atnt_cmdt = VALUES(atnt_cmdt),
   atnt_cmdt_nm = VALUES(atnt_cmdt_nm),
   pbac_cond_cn = VALUES(pbac_cond_cn),
+  updated_at = CURRENT_TIMESTAMP;
+"""
+
+SQL_UPSERT_ITEM_IMAGE = """
+INSERT INTO auction_item_image (
+  pbac_no, pbac_srno, cmdt_ln_no, image_seq, image_url, source_type
+)
+VALUES (%s,%s,%s,%s,%s,%s)
+ON DUPLICATE KEY UPDATE
+  image_url = VALUES(image_url),
+  source_type = VALUES(source_type),
   updated_at = CURRENT_TIMESTAMP;
 """
 
@@ -222,6 +283,14 @@ def main():
                         as_str(r.get("pbacCondCn")),
                     ),
                 )
+
+                image_urls = get_image_urls_from_record(r)
+                for seq, image_url in enumerate(image_urls, start=1):
+                    cur.execute(
+                        SQL_UPSERT_ITEM_IMAGE,
+                        (pbac_no, pbac_srno, cmdt_ln_no, seq, image_url, "LIST_API"),
+                    )
+
                 item_cnt += 1
 
         conn.commit()

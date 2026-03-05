@@ -77,6 +77,26 @@ CUSTOMS-ACCESS-IMPROVEMENT-SERVICE/
 
 --- ===================================================================================================
 
+
+
+## 🔍 이미지 수집 현황
+- 수집 스크립트(`project/AWSLambda/unipass_list.py`)가 각 품목에 대해 `image_urls` / `image_count` 필드를 함께 저장하도록 확장되었다.
+- 목록 응답에 이미지 힌트가 없으면 `image_urls`는 빈 배열이며, 향후 상세 API/상세 페이지 크롤링으로 보강 가능하다.
+- ETL(`etl/load_unipass_to_mysql.py`)은 `image_urls`를 `auction_item_image` 테이블에 UPSERT한다.
+
+---
+
+## 🧩 Backend MVP (DB 구축과 병행)
+- DB 구축 단계부터 API 서버를 같이 띄울 수 있도록 `backend/`에 FastAPI MVP를 추가했다.
+- 자세한 실행 방법은 `backend/README.md` 참고.
+
+---
+
+## 🗺 데모 구현 계획 문서
+- DB 구축 + 데이터 수집 + OpenAI 자동 분류 + 백엔드 API 단계별 계획: `docs/DEMO_IMPLEMENTATION_PLAN.md`
+
+---
+
 ## End-to-End 실행 순서 (처음 실행 기준)
 
 ### Step 0) (선택) 유니패스 데이터 수집 → JSON 생성

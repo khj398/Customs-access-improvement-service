@@ -346,3 +346,26 @@ CREATE TABLE IF NOT EXISTS item_search_token (
     REFERENCES auction_item(pbac_no, pbac_srno, cmdt_ln_no)
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='물품 검색 토큰(다국어/동의어 검색 지원)';
+
+/* ---------------------------------------------------------
+   7) auction_item_image: 물품별 이미지 URL 메타
+   - 수집 원본(JSON)의 image_urls 또는 추후 상세 크롤링 결과를 저장
+   --------------------------------------------------------- */
+CREATE TABLE IF NOT EXISTS auction_item_image (
+  pbac_no      VARCHAR(20) NOT NULL COMMENT '공매번호',
+  pbac_srno    VARCHAR(20) NOT NULL COMMENT '공매일련번호',
+  cmdt_ln_no   VARCHAR(10) NOT NULL COMMENT '물품라인번호',
+  image_seq    INT NOT NULL DEFAULT 1 COMMENT '이미지 순번(1부터)',
+  image_url    TEXT NOT NULL COMMENT '이미지 URL',
+  source_type  VARCHAR(20) NOT NULL DEFAULT 'LIST_API' COMMENT '수집 출처(LIST_API/DETAIL_PAGE 등)',
+  created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시각',
+  updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '갱신 시각',
+
+  PRIMARY KEY (pbac_no, pbac_srno, cmdt_ln_no, image_seq),
+  INDEX idx_item_image_key (pbac_no, pbac_srno, cmdt_ln_no),
+
+  CONSTRAINT fk_item_image_item
+    FOREIGN KEY (pbac_no, pbac_srno, cmdt_ln_no)
+    REFERENCES auction_item(pbac_no, pbac_srno, cmdt_ln_no)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='물품별 이미지 URL 메타';
