@@ -163,3 +163,9 @@ feedback.sql
 - `GT`는 QTY(정확한 단위명은 나중에 채워도 됨)
 
 
+
+
+## 5. 물품 이미지 메타 테이블
+- `auction_item_image`는 `(pbac_no, pbac_srno, cmdt_ln_no, image_seq)`를 키로 물품별 이미지 URL을 저장한다.
+- ETL(`etl/load_unipass_to_mysql.py`)에서 `image_urls` 필드를 읽어 UPSERT한다.
+- 목록 응답에서 이미지가 없을 수 있으므로, 추후 상세 수집 로직으로 보강 가능하다.
