@@ -11,25 +11,25 @@
 
 -- 0) (선택) DB 이름
 --    너희 DB명이 이미 정해져 있으면 아래 이름만 맞춰서 사용하면 됨.
-SET@DB_NAME='customs_auction';
+SET @DB_NAME = 'customs_auction';
 
 -- 1) FK 체크 잠시 끄기 (드롭 순서 문제 방지)
-SET FOREIGN_KEY_CHECKS=0;
+SET FOREIGN_KEY_CHECKS = 0;
 
 -- 2) 기존 테이블 삭제 (있으면)
-DROPTABLE IFEXISTS auction_item;
-DROPTABLE IFEXISTS auction;
+DROP TABLE IF EXISTS auction_item;
+DROP TABLE IF EXISTS auction;
 
-DROPTABLE IFEXISTS unit_code;
-DROPTABLE IFEXISTS cargo_type;
-DROPTABLE IFEXISTS bonded_warehouse;
-DROPTABLE IFEXISTS customs_office;
+DROP TABLE IF EXISTS unit_code;
+DROP TABLE IF EXISTS cargo_type;
+DROP TABLE IF EXISTS bonded_warehouse;
+DROP TABLE IF EXISTS customs_office;
 
-SET FOREIGN_KEY_CHECKS=1;
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- 3) DB 생성/선택
-CREATE DATABASE IFNOTEXISTS customs_auction
-DEFAULTCHARACTER SET utf8mb4
+CREATE DATABASE IF NOT EXISTS customs_auction
+DEFAULT CHARACTER SET utf8mb4
 COLLATE utf8mb4_general_ci;
 
 USE customs_auction;
@@ -44,16 +44,16 @@ USE customs_auction;
    - pbacCstmSgn(세관부호)로 식별
    - 세관명은 변경 가능성이 있어 PK로 두지 않고 UNIQUE로 관리 가능
    --------------------------------------------------------- */
-CREATE TABLE IFNOTEXISTS customs_office (
-  cstm_sgnVARCHAR(10)NOT NULL COMMENT'세관부호(pbacCstmSgn)',
-  cstm_nameVARCHAR(100)NOT NULL COMMENT'세관명(pbacCstmSgnNm)',
+CREATE TABLE IF NOT EXISTS customs_office (
+  cstm_sgn VARCHAR(10) NOT NULL COMMENT '세관부호(pbacCstmSgn)',
+  cstm_name VARCHAR(100) NOT NULL COMMENT '세관명(pbacCstmSgnNm)',
 
-  created_atTIMESTAMPNOT NULLDEFAULTCURRENT_TIMESTAMP COMMENT'생성 시각',
-  updated_atTIMESTAMPNOT NULLDEFAULTCURRENT_TIMESTAMPONUPDATECURRENT_TIMESTAMP COMMENT'갱신 시각',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시각',
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '갱신 시각',
 
-PRIMARY KEY (cstm_sgn),
-UNIQUE KEY uq_customs_name (cstm_name)
-) ENGINE=InnoDBDEFAULT CHARSET=utf8mb4 COMMENT='세관 기관 마스터';
+  PRIMARY KEY (cstm_sgn),
+  UNIQUE KEY uq_customs_name (cstm_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='세관 기관 마스터';
 
 
 /* ---------------------------------------------------------
@@ -62,21 +62,21 @@ UNIQUE KEY uq_customs_name (cstm_name)
    - snarSgn(창고부호)로 식별
    - 관할 세관은 선택적 연결(없을 수도 있으니 NULL 허용)
    --------------------------------------------------------- */
-CREATE TABLE IFNOTEXISTS bonded_warehouse (
-  snar_sgnVARCHAR(20)NOT NULL COMMENT'창고부호(snarSgn)',
-  snar_nameVARCHAR(150)NOT NULL COMMENT'창고명(snarSgnNm)',
-  cstm_sgnVARCHAR(10)NULL COMMENT'관할 세관부호(있으면 연결)',
+CREATE TABLE IF NOT EXISTS bonded_warehouse (
+  snar_sgn VARCHAR(20) NOT NULL COMMENT '창고부호(snarSgn)',
+  snar_name VARCHAR(150) NOT NULL COMMENT '창고명(snarSgnNm)',
+  cstm_sgn VARCHAR(10) NULL COMMENT '관할 세관부호(있으면 연결)',
 
-  created_atTIMESTAMPNOT NULLDEFAULTCURRENT_TIMESTAMP COMMENT'생성 시각',
-  updated_atTIMESTAMPNOT NULLDEFAULTCURRENT_TIMESTAMPONUPDATECURRENT_TIMESTAMP COMMENT'갱신 시각',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시각',
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '갱신 시각',
 
-PRIMARY KEY (snar_sgn),
+  PRIMARY KEY (snar_sgn),
   INDEX idx_wh_customs (cstm_sgn),
 
-CONSTRAINT fk_wh_customs
-FOREIGN KEY (cstm_sgn)REFERENCES customs_office(cstm_sgn)
-ONUPDATE CASCADEONDELETESETNULL
-) ENGINE=InnoDBDEFAULT CHARSET=utf8mb4 COMMENT='보세창고 마스터';
+  CONSTRAINT fk_wh_customs
+    FOREIGN KEY (cstm_sgn) REFERENCES customs_office(cstm_sgn)
+    ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='보세창고 마스터';
 
 
 /* ---------------------------------------------------------
@@ -84,16 +84,16 @@ ONUPDATE CASCADEONDELETESETNULL
    - 화물 유형 마스터
    - pbacTrgtCargTpcd / pbacTrgtCargTpNm
    --------------------------------------------------------- */
-CREATE TABLE IFNOTEXISTS cargo_type (
-  cargo_tpcdVARCHAR(10)NOT NULL COMMENT'화물유형코드(pbacTrgtCargTpcd)',
-  cargo_nameVARCHAR(50)NOT NULL COMMENT'화물유형명(pbacTrgtCargTpNm)',
+CREATE TABLE IF NOT EXISTS cargo_type (
+  cargo_tpcd VARCHAR(10) NOT NULL COMMENT '화물유형코드(pbacTrgtCargTpcd)',
+  cargo_name VARCHAR(50) NOT NULL COMMENT '화물유형명(pbacTrgtCargTpNm)',
 
-  created_atTIMESTAMPNOT NULLDEFAULTCURRENT_TIMESTAMP COMMENT'생성 시각',
-  updated_atTIMESTAMPNOT NULLDEFAULTCURRENT_TIMESTAMPONUPDATECURRENT_TIMESTAMP COMMENT'갱신 시각',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시각',
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '갱신 시각',
 
-PRIMARY KEY (cargo_tpcd),
-UNIQUE KEY uq_cargo_name (cargo_name)
-) ENGINE=InnoDBDEFAULT CHARSET=utf8mb4 COMMENT='화물 유형 마스터';
+  PRIMARY KEY (cargo_tpcd),
+  UNIQUE KEY uq_cargo_name (cargo_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='화물 유형 마스터';
 
 
 /* ---------------------------------------------------------
@@ -101,16 +101,16 @@ UNIQUE KEY uq_cargo_name (cargo_name)
    - 단위 코드 마스터 (KG, GT 등)
    - unit_kind는 수량/중량 구분용 (서비스/필터링에 도움)
    --------------------------------------------------------- */
-CREATE TABLE IFNOTEXISTS unit_code (
-  unit_cdVARCHAR(10)NOT NULL COMMENT'단위코드(KG, GT 등)',
-  unit_nameVARCHAR(50)NULL COMMENT'단위명(선택)',
-  unit_kind    ENUM('QTY','WEIGHT','OTHER')NOT NULLDEFAULT'OTHER' COMMENT'단위 종류',
+CREATE TABLE IF NOT EXISTS unit_code (
+  unit_cd VARCHAR(10) NOT NULL COMMENT '단위코드(KG, GT 등)',
+  unit_name VARCHAR(50) NULL COMMENT '단위명(선택)',
+  unit_kind ENUM('QTY','WEIGHT','OTHER') NOT NULL DEFAULT 'OTHER' COMMENT '단위 종류',
 
-  created_atTIMESTAMPNOT NULLDEFAULTCURRENT_TIMESTAMP COMMENT'생성 시각',
-  updated_atTIMESTAMPNOT NULLDEFAULTCURRENT_TIMESTAMPONUPDATECURRENT_TIMESTAMP COMMENT'갱신 시각',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시각',
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '갱신 시각',
 
-PRIMARY KEY (unit_cd)
-) ENGINE=InnoDBDEFAULT CHARSET=utf8mb4 COMMENT='단위 코드 마스터';
+  PRIMARY KEY (unit_cd)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='단위 코드 마스터';
 
 
 -- =========================================================
@@ -123,45 +123,45 @@ PRIMARY KEY (unit_cd)
    - 기간/기관/보관처/화물유형 등 공매 단위 메타데이터
    - auction_item(하위)들이 pbac_no로 연결됨
    --------------------------------------------------------- */
-CREATE TABLE IFNOTEXISTS auction (
-  pbac_noVARCHAR(20)NOT NULL COMMENT'공매번호(pbacNo) - 공매 이벤트 단위 PK',
+CREATE TABLE IF NOT EXISTS auction (
+  pbac_no VARCHAR(20) NOT NULL COMMENT '공매번호(pbacNo) - 공매 이벤트 단위 PK',
 
-  pbac_yyVARCHAR(4)NULL COMMENT'공매연도(pbacYy)',
-  pbac_dgcntVARCHAR(10)NULL COMMENT'차수(pbacDgcnt)',
-  pbac_tncntVARCHAR(10)NULL COMMENT'회차(pbacTncnt)',
+  pbac_yy VARCHAR(4) NULL COMMENT '공매연도(pbacYy)',
+  pbac_dgcnt VARCHAR(10) NULL COMMENT '차수(pbacDgcnt)',
+  pbac_tncnt VARCHAR(10) NULL COMMENT '회차(pbacTncnt)',
 
-  cstm_sgnVARCHAR(10)NULL COMMENT'세관부호(pbacCstmSgn)',
-  snar_sgnVARCHAR(20)NULL COMMENT'창고부호(snarSgn)',
-  cargo_tpcdVARCHAR(10)NULL COMMENT'화물유형코드(pbacTrgtCargTpcd)',
+  cstm_sgn VARCHAR(10) NULL COMMENT '세관부호(pbacCstmSgn)',
+  snar_sgn VARCHAR(20) NULL COMMENT '창고부호(snarSgn)',
+  cargo_tpcd VARCHAR(10) NULL COMMENT '화물유형코드(pbacTrgtCargTpcd)',
 
-  pbac_strt_dttm       DATETIMENULL COMMENT'공매 시작일시(pbacStrtDttm)',
-  pbac_end_dttm        DATETIMENULL COMMENT'공매 종료일시(pbacEndDttm)',
+  pbac_strt_dttm DATETIME NULL COMMENT '공매 시작일시(pbacStrtDttm)',
+  pbac_end_dttm DATETIME NULL COMMENT '공매 종료일시(pbacEndDttm)',
 
-  bid_rstc_ynCHAR(1)NULL COMMENT'입찰 제한 여부(bidRstcYn) Y/N',
-  elct_bid_eonCHAR(1)NULL COMMENT'전자입찰 여부(elctBidEon) Y/N',
+  bid_rstc_yn CHAR(1) NULL COMMENT '입찰 제한 여부(bidRstcYn) Y/N',
+  elct_bid_eon CHAR(1) NULL COMMENT '전자입찰 여부(elctBidEon) Y/N',
 
-  created_atTIMESTAMPNOT NULLDEFAULTCURRENT_TIMESTAMP COMMENT'생성 시각',
-  updated_atTIMESTAMPNOT NULLDEFAULTCURRENT_TIMESTAMPONUPDATECURRENT_TIMESTAMP COMMENT'갱신 시각',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시각',
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '갱신 시각',
 
-PRIMARY KEY (pbac_no),
+  PRIMARY KEY (pbac_no),
 
   INDEX idx_auction_period (pbac_strt_dttm, pbac_end_dttm),
   INDEX idx_auction_customs (cstm_sgn),
   INDEX idx_auction_wh (snar_sgn),
   INDEX idx_auction_cargo (cargo_tpcd),
 
-CONSTRAINT fk_auction_customs
-FOREIGN KEY (cstm_sgn)REFERENCES customs_office(cstm_sgn)
-ONUPDATE CASCADEONDELETESETNULL,
+  CONSTRAINT fk_auction_customs
+    FOREIGN KEY (cstm_sgn) REFERENCES customs_office(cstm_sgn)
+    ON UPDATE CASCADE ON DELETE SET NULL,
 
-CONSTRAINT fk_auction_warehouse
-FOREIGN KEY (snar_sgn)REFERENCES bonded_warehouse(snar_sgn)
-ONUPDATE CASCADEONDELETESETNULL,
+  CONSTRAINT fk_auction_warehouse
+    FOREIGN KEY (snar_sgn) REFERENCES bonded_warehouse(snar_sgn)
+    ON UPDATE CASCADE ON DELETE SET NULL,
 
-CONSTRAINT fk_auction_cargo
-FOREIGN KEY (cargo_tpcd)REFERENCES cargo_type(cargo_tpcd)
-ONUPDATE CASCADEONDELETESETNULL
-) ENGINE=InnoDBDEFAULT CHARSET=utf8mb4 COMMENT='공매(상위)';
+  CONSTRAINT fk_auction_cargo
+    FOREIGN KEY (cargo_tpcd) REFERENCES cargo_type(cargo_tpcd)
+    ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='공매(상위)';
 
 
 /* ---------------------------------------------------------
@@ -171,44 +171,44 @@ ONUPDATE CASCADEONDELETESETNULL
    - 따라서 PK를 (pbac_no, pbac_srno, cmdt_ln_no)로 설정
    - 수량/중량 단위 코드는 unit_code로 FK 연결
    --------------------------------------------------------- */
-CREATE TABLE IFNOTEXISTS auction_item (
-  pbac_noVARCHAR(20)NOT NULL COMMENT'공매번호(FK -> auction)',
-  pbac_srnoVARCHAR(20)NOT NULL COMMENT'공매일련번호(pbacSrno)',
-  cmdt_ln_noVARCHAR(10)NOT NULL COMMENT'물품라인번호(cmdtLnNo) - 유일키 구성요소',
+CREATE TABLE IF NOT EXISTS auction_item (
+  pbac_no VARCHAR(20) NOT NULL COMMENT '공매번호(FK -> auction)',
+  pbac_srno VARCHAR(20) NOT NULL COMMENT '공매일련번호(pbacSrno)',
+  cmdt_ln_no VARCHAR(10) NOT NULL COMMENT '물품라인번호(cmdtLnNo) - 유일키 구성요소',
 
-  cmdt_nmVARCHAR(255)NOT NULL COMMENT'물품명(cmdtNm)',
-  cmdt_qtyINTNULL COMMENT'수량(cmdtQty)',
-  cmdt_qty_ut_cdVARCHAR(10)NULL COMMENT'수량단위코드(cmdtQtyUtCd)',
-  cmdt_wghtDECIMAL(12,3)NULL COMMENT'중량(cmdtWght)',
-  cmdt_wght_ut_cdVARCHAR(10)NULL COMMENT'중량단위코드(cmdtWghtUtCd)',
+  cmdt_nm VARCHAR(255) NOT NULL COMMENT '물품명(cmdtNm)',
+  cmdt_qty INT NULL COMMENT '수량(cmdtQty)',
+  cmdt_qty_ut_cd VARCHAR(10) NULL COMMENT '수량단위코드(cmdtQtyUtCd)',
+  cmdt_wght DECIMAL(12,3) NULL COMMENT '중량(cmdtWght)',
+  cmdt_wght_ut_cd VARCHAR(10) NULL COMMENT '중량단위코드(cmdtWghtUtCd)',
 
-  pbac_prng_prcBIGINTNULL COMMENT'예정가격/최저입찰가(pbacPrngPrc)',
+  pbac_prng_prc BIGINT NULL COMMENT '예정가격/최저입찰가(pbacPrngPrc)',
 
-  atnt_cmdtCHAR(1)NULL COMMENT'주의물품 여부(atntCmdt) Y/N',
-  atnt_cmdt_nmVARCHAR(50)NULL COMMENT'주의물품 표기(atntCmdtNm)',
-  pbac_cond_cn         TEXTNULL COMMENT'공매조건(pbacCondCn)',
+  atnt_cmdt CHAR(1) NULL COMMENT '주의물품 여부(atntCmdt) Y/N',
+  atnt_cmdt_nm VARCHAR(50) NULL COMMENT '주의물품 표기(atntCmdtNm)',
+  pbac_cond_cn TEXT NULL COMMENT '공매조건(pbacCondCn)',
 
-  created_atTIMESTAMPNOT NULLDEFAULTCURRENT_TIMESTAMP COMMENT'생성 시각',
-  updated_atTIMESTAMPNOT NULLDEFAULTCURRENT_TIMESTAMPONUPDATECURRENT_TIMESTAMP COMMENT'갱신 시각',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시각',
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '갱신 시각',
 
-PRIMARY KEY (pbac_no, pbac_srno, cmdt_ln_no),
+  PRIMARY KEY (pbac_no, pbac_srno, cmdt_ln_no),
 
   INDEX idx_item_name (cmdt_nm),
   INDEX idx_item_qty_unit (cmdt_qty_ut_cd),
   INDEX idx_item_wght_unit (cmdt_wght_ut_cd),
 
-CONSTRAINT fk_item_auction
-FOREIGN KEY (pbac_no)REFERENCES auction(pbac_no)
-ONUPDATE CASCADEONDELETE CASCADE,
+  CONSTRAINT fk_item_auction
+    FOREIGN KEY (pbac_no) REFERENCES auction(pbac_no)
+    ON UPDATE CASCADE ON DELETE CASCADE,
 
-CONSTRAINT fk_item_qty_unit
-FOREIGN KEY (cmdt_qty_ut_cd)REFERENCES unit_code(unit_cd)
-ONUPDATE CASCADEONDELETESETNULL,
+  CONSTRAINT fk_item_qty_unit
+    FOREIGN KEY (cmdt_qty_ut_cd) REFERENCES unit_code(unit_cd)
+    ON UPDATE CASCADE ON DELETE SET NULL,
 
-CONSTRAINT fk_item_wght_unit
-FOREIGN KEY (cmdt_wght_ut_cd)REFERENCES unit_code(unit_cd)
-ONUPDATE CASCADEONDELETESETNULL
-) ENGINE=InnoDBDEFAULT CHARSET=utf8mb4 COMMENT='공매 물품(하위)';
+  CONSTRAINT fk_item_wght_unit
+    FOREIGN KEY (cmdt_wght_ut_cd) REFERENCES unit_code(unit_cd)
+    ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='공매 물품(하위)';
 
 -- 끝
 
