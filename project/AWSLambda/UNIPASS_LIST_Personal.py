@@ -1,5 +1,4 @@
 import json
-import time
 import os
 from playwright.sync_api import sync_playwright
 
@@ -57,30 +56,44 @@ def main():
 
         # 사업자/개인의 경우 첫 로딩 데이터 폐기
         page.evaluate("myc_f_createLeftMenuLst('MYC_MNU_00000634', 'Y')")
-        time.sleep(2)
+        page.wait_for_timeout(1000)
 
-        # 1페이지
+        # 물품 조회 페이지 이동
         with page.expect_response(lambda r: KEYWORD in r.url) as resp:
             page.locator('#MYC0202002Q_cmdtTpcd2').check();
-            time.sleep(1)
+            page.wait_for_timeout(500)
             page.locator(".search footer button[type='submit']:has-text('조회')").nth(0).click()
-        save_temp_json(resp.value, 1)
-
-        # 페이지 목록 파악
-        time.sleep(1)
-        page_lists = page.locator(".paging .pages li")
-        total_pages = page_lists.count()
         
-        # 2페이지부터
-        for index in range(2, total_pages + 1):
-            with page.expect_response(lambda r: KEYWORD in r.url) as resp:
-                page_lists.nth(index - 1).click()
-            save_temp_json(resp.value, index)
-            time.sleep(1)
+        pages_count = 0
+        while True:
+            # 초기 페이지
+            save_temp_json(resp.value, pages_count + 1)
+
+            # 페이지 목록 파악
+            page.wait_for_timeout(1000)
+            page_lists = page.locator(".paging .pages li")
+            total_pages = page_lists.count()
+            
+            # 다음 페이지부터
+            for index in range(2, total_pages + 1):
+                with page.expect_response(lambda r: KEYWORD in r.url) as resp:
+                    page_lists.nth(index - 1).click()
+                save_temp_json(resp.value, pages_count + index)
+                page.wait_for_timeout(1000)
+
+            if page.locator(".paging .next").count() > 0:
+                with page.expect_response(lambda r: KEYWORD in r.url) as new_resp:
+                    page.locator(".paging .next").click()
+                resp = new_resp
+                page.wait_for_load_state("networkidle")
+                pages_count += 10
+            else:
+                break
 
         browser.close()
         
-        # merge_and_cleanup(total_pages if total_pages > 0 else 1)
+        merge_and_cleanup(pages_count + total_pages if pages_count + total_pages > 0 else 1)
+
 
 if __name__ == "__main__":
     main()
