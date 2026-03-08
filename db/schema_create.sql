@@ -13,10 +13,24 @@
 --    너희 DB명이 이미 정해져 있으면 아래 이름만 맞춰서 사용하면 됨.
 SET @DB_NAME = 'customs_auction';
 
--- 1) FK 체크 잠시 끄기 (드롭 순서 문제 방지)
+-- 1) DB 생성/선택
+CREATE DATABASE IF NOT EXISTS customs_auction
+DEFAULT CHARACTER SET utf8mb4
+COLLATE utf8mb4_general_ci;
+
+USE customs_auction;
+
+-- 2) FK 체크 잠시 끄기 (드롭 순서 문제 방지)
 SET FOREIGN_KEY_CHECKS = 0;
 
--- 2) 기존 테이블 삭제 (있으면)
+-- 3) 기존 테이블 삭제 (있으면)
+--    의존성 역순(자식 -> 부모)으로 정리
+DROP TABLE IF EXISTS auction_item_image;
+DROP TABLE IF EXISTS item_search_token;
+DROP TABLE IF EXISTS item_classification;
+DROP TABLE IF EXISTS synonym_dictionary;
+DROP TABLE IF EXISTS category;
+
 DROP TABLE IF EXISTS auction_item;
 DROP TABLE IF EXISTS auction;
 
@@ -26,13 +40,6 @@ DROP TABLE IF EXISTS bonded_warehouse;
 DROP TABLE IF EXISTS customs_office;
 
 SET FOREIGN_KEY_CHECKS = 1;
-
--- 3) DB 생성/선택
-CREATE DATABASE IF NOT EXISTS customs_auction
-DEFAULT CHARACTER SET utf8mb4
-COLLATE utf8mb4_general_ci;
-
-USE customs_auction;
 
 -- =========================================================
 -- A. 마스터 테이블 (반복되는 코드/기관/보관처를 분리)
