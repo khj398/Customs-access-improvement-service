@@ -160,3 +160,16 @@ classification/build_classification.py의 build_rules()에 룰 추가
 → 없으면 db/seed_category_extend.sql에 카테고리 경로를 추가
 
 재실행: python classification/build_classification.py
+
+---
+
+## LLM 분류 보강(신규)
+- 설계 논의: `docs/DB_REDESIGN_DISCUSSION.md`
+- 실행 스크립트: `classification/build_classification_openai.py`
+- 필요 스키마: `classification_job_queue`, `llm_classification_cache` (`db/schema_create.sql` 포함)
+
+예시:
+```bash
+python classification/build_classification.py
+python classification/build_classification_openai.py --enqueue-low-confidence --min-confidence 0.60 --limit 30
+```

@@ -369,3 +369,58 @@ CREATE TABLE IF NOT EXISTS auction_item_image (
     REFERENCES auction_item(pbac_no, pbac_srno, cmdt_ln_no)
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='물품별 이미지 URL 메타';
+
+/* ---------------------------------------------------------
+   8) classification_job_queue: LLM 분류 재처리 큐
+   --------------------------------------------------------- */
+CREATE TABLE IF NOT EXISTS classification_job_queue (
+  job_id         BIGINT NOT NULL AUTO_INCREMENT COMMENT '큐 작업 ID',
+  pbac_no        VARCHAR(20) NOT NULL COMMENT '공매번호',
+  pbac_srno      VARCHAR(20) NOT NULL COMMENT '공매일련번호',
+  cmdt_ln_no     VARCHAR(10) NOT NULL COMMENT '물품라인번호',
+
+  status         ENUM('PENDING','RUNNING','DONE','FAILED') NOT NULL DEFAULT 'PENDING' COMMENT '작업 상태',
+  priority       INT NOT NULL DEFAULT 100 COMMENT '작업 우선순위(낮을수록 우선)',
+  retries        INT NOT NULL DEFAULT 0 COMMENT '재시도 횟수',
+  max_retries    INT NOT NULL DEFAULT 3 COMMENT '최대 재시도 횟수',
+  last_error     TEXT NULL COMMENT '마지막 오류 메시지',
+
+  lock_owner     VARCHAR(100) NULL COMMENT '워커 식별자',
+  locked_at      DATETIME NULL COMMENT '작업 잠금 시각',
+  processed_at   DATETIME NULL COMMENT '완료 시각',
+
+  created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시각',
+  updated_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '갱신 시각',
+
+  PRIMARY KEY (job_id),
+  UNIQUE KEY uq_cls_queue_item (pbac_no, pbac_srno, cmdt_ln_no),
+  INDEX idx_cls_queue_status_priority (status, priority, created_at),
+
+  CONSTRAINT fk_cls_queue_item
+    FOREIGN KEY (pbac_no, pbac_srno, cmdt_ln_no)
+    REFERENCES auction_item(pbac_no, pbac_srno, cmdt_ln_no)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='LLM 분류 재처리 큐';
+
+/* ---------------------------------------------------------
+   9) llm_classification_cache: 동일 물품명 캐시
+   --------------------------------------------------------- */
+CREATE TABLE IF NOT EXISTS llm_classification_cache (
+  cache_key      CHAR(64) NOT NULL COMMENT '정규화 물품명의 SHA256',
+  cmdt_nm_norm   VARCHAR(500) NOT NULL COMMENT '정규화 물품명',
+  category_id    BIGINT NOT NULL COMMENT '분류 카테고리 ID',
+  category_path  VARCHAR(300) NOT NULL COMMENT '카테고리 경로(>)',
+  confidence     DECIMAL(5,4) NULL COMMENT '모델 신뢰도',
+  rationale      TEXT NULL COMMENT '모델 분류 근거',
+  model_name     VARCHAR(50) NOT NULL COMMENT '모델명',
+  model_ver      VARCHAR(30) NULL COMMENT '모델 버전',
+  created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시각',
+  updated_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '갱신 시각',
+
+  PRIMARY KEY (cache_key),
+  INDEX idx_llm_cache_category (category_id),
+
+  CONSTRAINT fk_llm_cache_category
+    FOREIGN KEY (category_id) REFERENCES category(category_id)
+    ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='LLM 분류 캐시';

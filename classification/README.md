@@ -135,3 +135,24 @@ DB 결과 검증은 db/feedback.sql 사용을 권장한다.
 fallback 항목의 RAW 토큰 TOP 분석 → 룰/사전 확장 근거
 특정 검색어(와인/술/주류 등) 토큰 존재 여부 확인
 
+
+---
+
+## 8. LLM 분류(Fallback) 실행
+
+`build_classification_openai.py`는 rule 분류 결과 중 저신뢰 항목을 큐에 넣고 OpenAI로 재분류한다.
+
+```bash
+python classification/build_classification_openai.py --enqueue-low-confidence --min-confidence 0.60 --limit 30
+```
+
+환경 변수:
+- `OPENAI_API_KEY` (필수)
+- `OPENAI_MODEL` (선택, 기본: `gpt-4o-mini`)
+- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
+
+작동 방식:
+1. `classification_job_queue`에서 `PENDING` 작업 조회
+2. 동일 물품명은 `llm_classification_cache`에서 캐시 재사용
+3. 결과를 `item_classification`에 UPSERT
+4. 큐 상태를 `DONE/FAILED`로 갱신

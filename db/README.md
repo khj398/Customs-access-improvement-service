@@ -169,3 +169,18 @@ feedback.sql
 - `auction_item_image`는 `(pbac_no, pbac_srno, cmdt_ln_no, image_seq)`를 키로 물품별 이미지 URL을 저장한다.
 - ETL(`etl/load_unipass_to_mysql.py`)에서 `image_urls` 필드를 읽어 UPSERT한다.
 - 목록 응답에서 이미지가 없을 수 있으므로, 추후 상세 수집 로직으로 보강 가능하다.
+
+## 6. LLM 분류 운영 테이블
+
+`schema_create.sql`에는 아래 운영용 테이블이 추가되었다.
+
+- `classification_job_queue`
+  - LLM 재분류 대상 관리(PENDING/RUNNING/DONE/FAILED)
+  - 재시도(`retries`, `max_retries`) 및 오류(`last_error`) 추적
+- `llm_classification_cache`
+  - 정규화된 물품명 해시를 키로 OpenAI 분류 결과 캐시
+  - 동일 물품명 반복 호출 비용 절감
+
+권장 실행 흐름:
+1. `build_classification.py`로 rule 1차 분류
+2. `build_classification_openai.py --enqueue-low-confidence`로 저신뢰 항목 큐잉 + LLM 보강
