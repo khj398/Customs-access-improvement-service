@@ -8,8 +8,16 @@ from playwright.sync_api import sync_playwright
 # 저장 루트
 TMP_PATH = "./downloaded_images/"
 
-# 설정
-HEADLESS = False
+def parse_args():
+    parser = argparse.ArgumentParser(description="UNIPASS 상세 페이지 이미지(.gif) 수집")
+    parser.add_argument("--pbac-no", help="조회할 단일 공매번호 (예: 020-26-01-900003-1)")
+    parser.add_argument(
+        "--pbac-list-file",
+        help="공매번호 목록 파일(txt/json). 미지정 시 unipass_all_2b.json+unipass_all_2c.json에서 자동 수집",
+    )
+    parser.add_argument("--output-dir", default="./downloaded_images", help="이미지 저장 루트 폴더")
+    parser.add_argument("--headful", action="store_true", help="브라우저 UI 표시")
+    return parser.parse_args()
 
 
 def digits_only(value: str) -> str:
@@ -212,6 +220,9 @@ def main():
             page.close()
 
         browser.close()
+
+    print(f"완료: {ok}/{len(pbac_nos)} 건 성공")
+
 
     print(f"완료: {ok}/{len(pbac_nos)} 건 성공")
 
