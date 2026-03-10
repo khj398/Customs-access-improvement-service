@@ -183,6 +183,7 @@ feedback.sql
 
 
 ## 5. 물품 이미지 메타 테이블
-- `auction_item_image`는 `(pbac_no, pbac_srno, cmdt_ln_no, image_seq)`를 키로 물품별 이미지 URL을 저장한다.
-- ETL(`etl/load_unipass_to_mysql.py`)에서 `image_urls` 필드를 읽어 UPSERT한다.
-- 목록 응답에서 이미지가 없을 수 있으므로, 추후 상세 수집 로직으로 보강 가능하다.
+- `auction_item_image`는 `(pbac_no, pbac_srno, cmdt_ln_no, image_seq)`를 키로 물품별 이미지 경로/URL을 저장한다.
+- ETL(`etl/load_unipass_to_mysql.py`)은 두 경로를 지원한다: (1) JSON의 `image_urls`, (2) `downloaded_images/<pbac_no>/0_{cmdt_ln_no(앞0제거)}_{idx}.gif` 파일 구조.
+- 폴더 구조가 `downloaded_images/<pbac_no>/...`이면 공매번호별 자동 매핑된다.
+- 레거시 단일 폴더(`downloaded_images` 바로 아래 GIF)인 경우에만 `UNIPASS_IMAGE_PBAC_NO`가 필요하다.

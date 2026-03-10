@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
+from pathlib import Path
 
 import pymysql
 
@@ -29,12 +30,13 @@ class DataSource:
     collector_source: str
     source_name: str
     image_source_type: str
+    source_kind: str = "json"
 
 
 DEFAULT_SOURCES = [
     DataSource("unipass_all_2b.json", "BUSINESS", "unipass_list_business", "LIST_BUSINESS"),
     DataSource("unipass_all_2c.json", "PERSONAL", "unipass_list_personal", "LIST_PERSONAL"),
-    DataSource("unipass_image.json", "IMAGE", "unipass_image", "UNIPASS_IMAGE"),
+    DataSource("unipass_image.json", "IMAGE", "unipass_image", "UNIPASS_IMAGE_JSON"),
 ]
 
 
@@ -101,10 +103,16 @@ def resolve_sources() -> list[DataSource]:
             path = parts[0]
             collector = parts[1].upper() if len(parts) >= 2 and parts[1] else "UNKNOWN"
             source_name = parts[2] if len(parts) >= 3 and parts[2] else f"unipass_{collector.lower()}"
-            out.append(DataSource(path, collector, source_name, f"LIST_{collector}"))
+            out.append(DataSource(path, collector, source_name, f"LIST_{collector}", "json"))
         return out
 
-    return [s for s in DEFAULT_SOURCES if os.path.exists(s.path)]
+    sources = [s for s in DEFAULT_SOURCES if os.path.exists(s.path)]
+
+    image_dir = os.getenv("UNIPASS_IMAGE_DIR", "downloaded_images").strip()
+    if image_dir and os.path.isdir(image_dir):
+        sources.append(DataSource(image_dir, "IMAGE", "unipass_image_dir", "UNIPASS_IMAGE_FILE", "image_dir"))
+
+    return sources
 
 
 def _extract_image_urls(value: Any) -> list[str]:
@@ -309,6 +317,127 @@ def insert_change_event(cur, pbac_no: str, pbac_srno: str, cmdt_ln_no: str, even
     )
 
 
+
+
+def _load_items_by_cmdt_ln_no(cur, pbac_no: str) -> dict[str, list[dict]]:
+    cur.execute(
+        """
+        SELECT pbac_srno, cmdt_ln_no
+        FROM auction_item
+        WHERE pbac_no = %s
+        """,
+        (pbac_no,),
+    )
+    items = cur.fetchall()
+
+    by_norm_cmdt_ln_no: dict[str, list[dict]] = {}
+    for item in items:
+        cmdt_ln_no_str = str(item["cmdt_ln_no"])
+        norm = str(int(cmdt_ln_no_str)) if cmdt_ln_no_str.isdigit() else cmdt_ln_no_str
+        by_norm_cmdt_ln_no.setdefault(norm, []).append(item)
+
+    return by_norm_cmdt_ln_no
+
+
+def _upsert_image_files_for_pbac(cur, pbac_no: str, image_files: list[Path], source_type: str) -> tuple[int, int]:
+    pattern = re.compile(r"^0_(\d+)_(\d+)\.gif$", re.IGNORECASE)
+    by_norm_cmdt_ln_no = _load_items_by_cmdt_ln_no(cur, pbac_no)
+
+    upsert_cnt = 0
+    error_cnt = 0
+
+    for file in image_files:
+        m = pattern.match(file.name)
+        if not m:
+            continue
+
+        norm_cmdt_ln_no = str(int(m.group(1)))
+        image_seq = int(m.group(2)) + 1
+        candidates = by_norm_cmdt_ln_no.get(norm_cmdt_ln_no, [])
+
+        if not candidates:
+            error_cnt += 1
+            continue
+        if len(candidates) > 1:
+            error_cnt += 1
+            continue
+
+        item = candidates[0]
+        cur.execute(
+            SQL_UPSERT_ITEM_IMAGE,
+            (
+                pbac_no,
+                item["pbac_srno"],
+                item["cmdt_ln_no"],
+                image_seq,
+                str(file.as_posix()),
+                source_type,
+            ),
+        )
+        upsert_cnt += 1
+
+    return upsert_cnt, error_cnt
+
+
+def run_image_dir_source(conn, source: DataSource) -> tuple[int, int, int]:
+    pattern = re.compile(r"^0_(\d+)_(\d+)\.gif$", re.IGNORECASE)
+    root = Path(source.path)
+
+    # 우선순위 1) 하위 폴더별 처리: downloaded_images/<pbac_no>/0_x_y.gif
+    pbac_dirs = [d for d in root.iterdir() if d.is_dir()]
+
+    # 우선순위 2) 레거시 단일 폴더 + 환경변수 지정
+    legacy_pbac_no = os.getenv("UNIPASS_IMAGE_PBAC_NO", "").strip()
+
+    with conn.cursor() as cur:
+        total_file_count = 0
+        if pbac_dirs:
+            for d in pbac_dirs:
+                total_file_count += len([f for f in d.iterdir() if f.is_file() and pattern.match(f.name)])
+        else:
+            total_file_count = len([f for f in root.iterdir() if f.is_file() and pattern.match(f.name)])
+
+        cur.execute(SQL_INSERT_INGESTION_RUN, (source.source_name, source.collector_source, total_file_count))
+        ingestion_run_id = cur.lastrowid
+    conn.commit()
+
+    total_upsert_cnt = 0
+    total_error_cnt = 0
+
+    try:
+        with conn.cursor() as cur:
+            if pbac_dirs:
+                for pbac_dir in sorted(pbac_dirs):
+                    pbac_no = pbac_dir.name.strip()
+                    if not pbac_no:
+                        continue
+                    image_files = sorted([f for f in pbac_dir.iterdir() if f.is_file() and pattern.match(f.name)])
+                    upsert_cnt, error_cnt = _upsert_image_files_for_pbac(cur, pbac_no, image_files, source.image_source_type)
+                    total_upsert_cnt += upsert_cnt
+                    total_error_cnt += error_cnt
+            else:
+                if not legacy_pbac_no:
+                    print("⚠️  SKIP image_dir source: 폴더 구조(downloaded_images/<pbac_no>/...)가 없으면 UNIPASS_IMAGE_PBAC_NO가 필요합니다.")
+                    total_error_cnt += 1
+                else:
+                    image_files = sorted([f for f in root.iterdir() if f.is_file() and pattern.match(f.name)])
+                    upsert_cnt, error_cnt = _upsert_image_files_for_pbac(cur, legacy_pbac_no, image_files, source.image_source_type)
+                    total_upsert_cnt += upsert_cnt
+                    total_error_cnt += error_cnt
+
+            final_status = "PARTIAL" if total_error_cnt > 0 else "SUCCESS"
+            cur.execute(SQL_FINISH_INGESTION_RUN, (final_status, total_upsert_cnt, total_error_cnt, None, ingestion_run_id))
+
+        conn.commit()
+        return 0, total_upsert_cnt, total_error_cnt
+
+    except Exception as e:
+        conn.rollback()
+        with conn.cursor() as cur:
+            cur.execute(SQL_FINISH_INGESTION_RUN, ("FAILED", total_upsert_cnt, total_error_cnt + 1, str(e)[:1000], ingestion_run_id))
+        conn.commit()
+        raise
+
 def run_source(conn, source: DataSource) -> tuple[int, int, int]:
     with open(source.path, "r", encoding="utf-8") as f:
         records = json.load(f)
@@ -485,7 +614,7 @@ def main():
     sources = resolve_sources()
     if not sources:
         raise FileNotFoundError(
-            "입력 JSON 파일이 없습니다. 기본 파일(unipass_all_2b.json / unipass_all_2c.json / unipass_image.json) 또는 UNIPASS_JSON_FILES 환경변수를 확인하세요."
+            "입력 소스가 없습니다. 기본 JSON(unipass_all_2b.json / unipass_all_2c.json / unipass_image.json) 또는 downloaded_images/<pbac_no>/... (레거시: UNIPASS_IMAGE_PBAC_NO), UNIPASS_JSON_FILES 환경변수를 확인하세요."
         )
 
     conn = pymysql.connect(**DB_CONFIG)
@@ -496,7 +625,10 @@ def main():
     try:
         for source in sources:
             print(f"▶ loading source: {source.path} ({source.collector_source})")
-            auction_cnt, item_cnt, err_cnt = run_source(conn, source)
+            if source.source_kind == "image_dir":
+                auction_cnt, item_cnt, err_cnt = run_image_dir_source(conn, source)
+            else:
+                auction_cnt, item_cnt, err_cnt = run_source(conn, source)
             total_auctions += auction_cnt
             total_items += item_cnt
             total_errors += err_cnt
