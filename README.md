@@ -102,12 +102,11 @@ CUSTOMS-ACCESS-IMPROVEMENT-SERVICE/
 이미 목록 JSON(`unipass_all_2b.json`/`unipass_all_2c.json`)이 있으면 생략 가능하다.
 python project/AWSLambda/unipass_list.py
 
-이미지 상세 수집은 단건/일괄 모두 지원한다.
-python project/AWSLambda/UNIPASS_Image.py --pbac-no "020-26-01-900003-1" --output-dir downloaded_images
-python project/AWSLambda/UNIPASS_Image.py --output-dir downloaded_images   # 기본: unipass_all_2b.json + unipass_all_2c.json 전체 공매번호
+이미지 상세 수집은 미리 수집한 목록 JSON(`unipass_all_2b.json`, `unipass_all_2c.json`)의 공매번호를 자동 순회한다.
+python project/AWSLambda/UNIPASS_Image.py
 
 파일명은 `downloaded_images/<pbacNo>/0_{cmdtLnNo(앞0제거)}_{index}.gif` 규칙으로 저장된다.
-공매번호는 하이픈 유무(예: 02026019000031 / 020-26-01-900003-1)를 모두 지원한다.
+목록 JSON의 공매번호가 하이픈 없이 저장되어 있어도(예: `02026019000031`) 수집 시 자동으로 하이픈 포맷으로 보정해 조회한다.
 
 ---
 

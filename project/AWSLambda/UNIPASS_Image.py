@@ -1,12 +1,12 @@
-import argparse
 import json
 import os
+import time
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-HEADLESS = True
-
+# 저장 루트
+TMP_PATH = "./downloaded_images/"
 
 def parse_args():
     parser = argparse.ArgumentParser(description="UNIPASS 상세 페이지 이미지(.gif) 수집")
@@ -20,85 +20,72 @@ def parse_args():
     return parser.parse_args()
 
 
-def normalize_cmdt_ln_no(value: str) -> str:
-    value = (value or "").strip()
-    digits = "".join(ch for ch in value if ch.isdigit())
-    if not digits:
-        return "0"
-    return str(int(digits))
+def digits_only(value: str) -> str:
+    return "".join(ch for ch in str(value) if ch.isdigit())
 
 
-def sanitize_pbac_no(pbac_no: str) -> str:
-    return pbac_no.replace("/", "_").replace("\\", "_").strip()
-
-
-
-
-def pbac_digits(pbac_no: str) -> str:
-    return "".join(ch for ch in str(pbac_no) if ch.isdigit())
-
-
-def pbac_hyphenated(pbac_no: str) -> str:
-    digits = pbac_digits(pbac_no)
+def to_hyphen_pbac_no(pbac_no: str) -> str:
+    """
+    공매번호 하이픈 포맷 보정
+    예) 02026019000031 -> 020-26-01-900003-1
+    """
+    digits = digits_only(pbac_no)
     if len(digits) == 14:
-        return f"{digits[:3]}-{digits[3:5]}-{digits[5:7]}-{digits[7:13]}-{digits[13:14]}"
-    return pbac_no
+        return f"{digits[:3]}-{digits[3:5]}-{digits[5:7]}-{digits[7:13]}-{digits[13]}"
+    return str(pbac_no).strip()
 
 
-def read_pbac_nos_from_file(path: str) -> list[str]:
-    p = Path(path)
-    if not p.exists():
-        return []
-
-    if p.suffix.lower() == ".json":
-        data = json.loads(p.read_text(encoding="utf-8"))
-        if isinstance(data, list):
-            out: list[str] = []
-            for row in data:
-                if isinstance(row, dict):
-                    pbac_no = str(row.get("pbacNo", "")).strip()
-                    if pbac_no:
-                        out.append(pbac_no)
-                elif isinstance(row, str) and row.strip():
-                    out.append(row.strip())
-            return list(dict.fromkeys(out))
-
-    out: list[str] = []
-    for line in p.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line:
-            out.append(line)
-    return list(dict.fromkeys(out))
-
-
-def default_pbac_nos() -> list[str]:
-    out: list[str] = []
+def load_pbac_nos() -> list[str]:
+    """
+    미리 수집한 목록 JSON(unipass_all_2b.json / unipass_all_2c.json)에서
+    pbacNo를 읽고, 중복 제거 후 반환
+    """
+    pbac_nos: list[str] = []
     for filename in ("unipass_all_2b.json", "unipass_all_2c.json"):
-        if Path(filename).exists():
-            out.extend(read_pbac_nos_from_file(filename))
-    return list(dict.fromkeys(out))
+        path = Path(filename)
+        if not path.exists():
+            continue
 
+        with path.open("r", encoding="utf-8") as f:
+            rows = json.load(f)
 
+        if not isinstance(rows, list):
+            continue
+
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            pbac_no = str(row.get("pbacNo", "")).strip()
+            if pbac_no:
+                pbac_nos.append(pbac_no)
+
+    # digits 기준 중복 제거
+    uniq: dict[str, str] = {}
+    for pbac_no in pbac_nos:
+        key = digits_only(pbac_no)
+        if key and key not in uniq:
+            uniq[key] = to_hyphen_pbac_no(pbac_no)
+
+    return list(uniq.values())
 
 
 def find_target_row(page, pbac_no: str):
-    target_digits = pbac_digits(pbac_no)
+    target_digits = digits_only(pbac_no)
     rows = page.locator("#MYC0202002Q_table1 tbody tr")
-    row_count = rows.count()
-    for i in range(row_count):
+    for i in range(rows.count()):
         row = rows.nth(i)
-        td = row.locator("td[name='pbacNo']")
-        if td.count() == 0:
+        cell = row.locator("td[name='pbacNo']")
+        if cell.count() == 0:
             continue
-        text = td.first.inner_text().strip()
-        if pbac_digits(text) == target_digits:
+        cell_digits = digits_only(cell.first.inner_text().strip())
+        if cell_digits == target_digits:
             return row
     return None
 
 
-def collect_one(page, pbac_no: str, base_output_dir: str) -> bool:
-    target_output = os.path.join(base_output_dir, sanitize_pbac_no(pbac_no))
-    os.makedirs(target_output, exist_ok=True)
+def collect_single_pbac(page, pbac_no: str) -> bool:
+    save_dir = os.path.join(TMP_PATH, pbac_no)
+    os.makedirs(save_dir, exist_ok=True)
 
     download_count = 0
     cmdt_ln_no = "1"
@@ -118,7 +105,7 @@ def collect_one(page, pbac_no: str, base_output_dir: str) -> bool:
 
             try:
                 image_buffer = response.body()
-                file_path = os.path.join(target_output, file_name)
+                file_path = os.path.join(save_dir, file_name)
                 with open(file_path, "wb") as f:
                     f.write(image_buffer)
                 print(f"[{pbac_no}] 저장 완료: {file_name}")
@@ -131,20 +118,22 @@ def collect_one(page, pbac_no: str, base_output_dir: str) -> bool:
 
     page.goto("https://unipass.customs.go.kr/csp/index.do")
     page.evaluate("myc_f_createLeftMenuLst('MYC_MNU_00000634', 'Y')")
-    page.wait_for_timeout(3000)
+    time.sleep(3)
 
-    digits = pbac_digits(pbac_no)
-    parts = pbac_no.split("-")
-    is_business = parts[4] if len(parts) >= 5 else (digits[-1] if len(digits) == 14 else "1")
+    # 물품구분 확인
+    # 1: 수입화물(사업자) 2: 휴대품(사업자/개인)
+    is_business = pbac_no.split("-")[4]
+
     if is_business == "2":
         page.locator('#MYC0202002Q_cmdtTpcd2').check()
-        page.wait_for_timeout(1000)
+        time.sleep(1)
         page.locator(".search footer button[type='submit']:has-text('조회')").nth(0).click()
-        page.wait_for_timeout(3000)
+        time.sleep(3)
 
-    page_found = False
+    found = False
+    pages_count = 0
     while True:
-        page.wait_for_timeout(1000)
+        time.sleep(1)
         page_lists = page.locator(".paging .pages li")
         total_pages = page_lists.count()
 
@@ -153,51 +142,58 @@ def collect_one(page, pbac_no: str, base_output_dir: str) -> bool:
 
             if target_row is not None:
                 target_row.locator("a[name='cmdtNm']").first.click()
-                page.wait_for_load_state("networkidle", timeout=30000)
-                page_found = True
+                try:
+                    page.wait_for_load_state("networkidle", timeout=30000)
+                except Exception:
+                    pass
+                found = True
                 break
 
             if index != total_pages:
                 page_lists.nth(index).click()
-                page.wait_for_timeout(1000)
+                time.sleep(1)
 
-        if page_found:
+        if found:
             break
 
         if page.locator(".paging .next").count() > 0:
             page.locator(".paging .next").click()
             page.wait_for_load_state("networkidle")
+            pages_count += 10
         else:
             print(f"[{pbac_no}] 찾는 물건이 존재하지 않습니다.")
             page.remove_listener("response", handle_response)
             return False
 
-    def download_check():
+    # 첫 항목 로딩 대기
+    time.sleep(15)
+
+    def wait_downloads():
         nonlocal download_count
         while download_count > 0:
             page.wait_for_timeout(500)
 
-    page.wait_for_timeout(15000)
     cmdt_lists = page.locator("#MYC0202003Q_table2 tbody tr")
-    cmdt_counts = cmdt_lists.count()
-    download_check()
-    page.wait_for_timeout(2000)
+    cmdt_count = cmdt_lists.count()
+    wait_downloads()
+    time.sleep(2)
 
-    for row_idx in range(cmdt_counts):
+    # 상세 항목 순회
+    for row_idx in range(cmdt_count):
         row = cmdt_lists.nth(row_idx)
-        row_cmdt_text = row.locator("td").first.inner_text().strip()
-        cmdt_ln_no = normalize_cmdt_ln_no(row_cmdt_text)
+        row_no = row.locator("td").first.inner_text().strip()
+        cmdt_ln_no = str(int("".join(ch for ch in row_no if ch.isdigit()) or "0"))
         image_count = 0
 
         if row_idx > 0:
             row.locator("td").nth(1).locator("a").click(force=True)
-            page.wait_for_timeout(3000)
+            time.sleep(3)
             try:
                 page.wait_for_load_state("networkidle", timeout=30000)
             except Exception:
                 pass
 
-        download_check()
+        wait_downloads()
 
     page.remove_listener("response", handle_response)
     print(f"[{pbac_no}] 다운로드 완료")
@@ -205,30 +201,28 @@ def collect_one(page, pbac_no: str, base_output_dir: str) -> bool:
 
 
 def main():
-    args = parse_args()
-    os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs(TMP_PATH, exist_ok=True)
 
-    if args.pbac_no:
-        pbac_nos = [args.pbac_no.strip()]
-    elif args.pbac_list_file:
-        pbac_nos = read_pbac_nos_from_file(args.pbac_list_file)
-    else:
-        pbac_nos = default_pbac_nos()
-
+    pbac_nos = load_pbac_nos()
     if not pbac_nos:
-        raise ValueError("처리할 공매번호가 없습니다. --pbac-no 또는 --pbac-list-file(혹은 기본 JSON 파일)를 확인하세요.")
+        raise FileNotFoundError("unipass_all_2b.json / unipass_all_2c.json 에서 공매번호를 찾지 못했습니다.")
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=not args.headful and HEADLESS)
+        browser = p.chromium.launch(headless=HEADLESS)
+
         ok = 0
-        for i, pbac_no in enumerate(pbac_nos, start=1):
+        for i, raw_pbac_no in enumerate(pbac_nos, start=1):
+            pbac_no = to_hyphen_pbac_no(raw_pbac_no)
             page = browser.new_page()
-            print(f"[{i}/{len(pbac_nos)}] 수집 시작: {pbac_no} ({pbac_hyphenated(pbac_no)})")
-            if collect_one(page, pbac_no, args.output_dir):
+            print(f"[{i}/{len(pbac_nos)}] 수집 시작: {pbac_no}")
+            if collect_single_pbac(page, pbac_no):
                 ok += 1
             page.close()
 
         browser.close()
+
+    print(f"완료: {ok}/{len(pbac_nos)} 건 성공")
+
 
     print(f"완료: {ok}/{len(pbac_nos)} 건 성공")
 
