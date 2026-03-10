@@ -403,7 +403,7 @@ def run_source(conn, source: DataSource) -> tuple[int, int, int]:
                         pbac_no,
                         pbac_srno,
                         cmdt_ln_no,
-                        as_str(r.get("cmdtNm")) or "UNKNOWN",
+                        as_str(r.get("cmdtNm")),
                         as_int(r.get("cmdtQty")),
                         qty_unit,
                         as_float(r.get("cmdtWght")),
