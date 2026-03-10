@@ -31,6 +31,13 @@ MySQL Workbench에서 아래 SQL 파일 실행:
 1) `schema_create.sql`  
 - 기존 테이블을 모두 삭제(DROP)한 뒤, 전체 스키마를 한 번에 생성한다.
 
+1-1) `schema_patch_v2.sql`  
+- 재설계 가이드 기준 확장 DDL(ingestion/run/raw payload/change event/queue/collector_source)을 반영한다.
+- 기존 데이터가 있는 환경에서는 `schema_create.sql` 대신 `schema_patch_v2.sql`만 적용해도 된다.
+
+1-2) `schema_app_user_v1.sql`  
+- `app_user` 도메인(회원/소셜연동/관심대상/알림룰/알림이력) 스키마를 생성한다.
+
 ---
 
 ### Step 2. 카테고리 Seed 입력
@@ -57,10 +64,20 @@ MySQL Workbench에서 아래 SQL 파일 실행:
 ETL은 `auction`, `auction_item`을 채운다.
 
 - 실행 파일: `etl/load_unipass_to_mysql.py`
-- 입력 JSON: 레포 루트의 `unipass_all.json`
+- 기본 입력 JSON(자동 탐색):
+  - `unipass_list_business.json` (BUSINESS)
+  - `unipass_list_personal.json` (PERSONAL)
+  - `unipass_image.json` (IMAGE; 선택)
+- 커스텀 입력(선택): `UNIPASS_JSON_FILES` 환경변수 사용
+  - 형식: `path[:collector_source[:source_name]]`를 콤마로 연결
 
 ```bash
 python etl/load_unipass_to_mysql.py
+
+# 예시: 파일/소스 직접 지정
+UNIPASS_JSON_FILES="unipass_list_business.json:BUSINESS:unipass_list_business,unipass_list_personal.json:PERSONAL:unipass_list_personal,unipass_image.json:IMAGE:unipass_image" \
+python etl/load_unipass_to_mysql.py
+```
 
 ---
 
