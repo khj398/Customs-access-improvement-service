@@ -79,8 +79,8 @@
 
 ### 2-5. auction_item_image 보강
 - 현재 테이블 유지 + 아래 컬럼 추가 권장
-  - `image_type` (THUMB/DETAIL)
-  - `source_type` (UNIPASS_IMAGE/LIST_BUSINESS/LIST_PERSONAL)
+  - `image_type` (THUMB/DETAIL/UNKNOWN)
+  - `source` (LIST_API/DETAIL_API/CRAWLER)
   - `last_seen_at`
 
 ### 2-5-1. 수집기 3종 반영 체크 (Business/Personal/Image)
@@ -96,8 +96,8 @@
 3. 전자입찰/일반입찰 구분: `auction.elct_bid_eon`으로 **구분 가능**
 
 보강 권장(1차 DDL):
-- `auction`에 `collector_source`(BUSINESS/PERSONAL/IMAGE) 필드 추가 고려
-- `auction_item_image.source_type` 값을 표준 enum으로 관리
+- `auction`에 `collector_source`(BUSINESS/PERSONAL/UNKNOWN) 필드 추가 고려
+- `auction_item_image.source` 또는 `source_type` 값을 표준 enum으로 관리
   - 예: `UNIPASS_IMAGE`, `LIST_BUSINESS`, `LIST_PERSONAL`
 
 ### 2-6. 분류/검색 테이블 운영 보강
@@ -399,9 +399,8 @@ MVP는 단일 DB 테이블 큐 + 워커 1개부터 시작해도 충분합니다.
 
 ### 10-4. 운영 방식
 - 매일 새벽 TTL 배치 실행(현재는 1일 1회 수집 전제)
-- TTL 기준 시각은 `pbac_end_dttm`(공매 종료 시점) **단일 기준 컬럼**으로 계산
-  - 네이밍 리팩터링을 하더라도, 1차 구현 SQL은 `pbac_end_dttm` 기준으로 작성
-  - 의미: TTL 계산 시 여러 날짜 컬럼을 섞지 않고 `pbac_end_dttm` 하나만 기준으로 사용
+- TTL 기준 시각은 `auction_end_at`(공매 종료 시점) **단일 기준 컬럼**으로 계산
+  - 의미: TTL 계산 시 여러 날짜 컬럼을 섞지 않고 `auction_end_at` 하나만 기준으로 사용
 - 상태값(`OPEN/CLOSED/CANCELLED` 등) 정의를 먼저 고정한 뒤 삭제 배치를 연결
 - 삭제 전 집계 스냅샷 생성(일/주 단위)
 - 정책 변경 시 문서+코드(배치 SQL) 함께 버전관리
@@ -452,7 +451,7 @@ MVP는 단일 DB 테이블 큐 + 워커 1개부터 시작해도 충분합니다.
 1. 동일품목 클러스터링 2차 정밀 기준
    - 이번 단계에서는 보류, 후속 단계에서 `normalized_name` + 주요 속성 기준으로 도입
 2. 보존정책 실제 적용안
-   - TTL 기준은 `pbac_end_dttm` 단일 컬럼, 스냅샷 파티션 키는 월별(`ym`)로 확정
+   - TTL 기준은 `auction_end_at` 단일 컬럼, 스냅샷 파티션 키는 월별(`ym`)로 확정
    - 남은 과제: 저장소 위치/수명주기 정책(Lifecycle) 확정
 3. 실시간 수집 도입 세부
    - 1분 폴링 + API 한도 100건/호출 + 실패율 5% 초과 시 재조정 규칙의 운영값 검증 필요
@@ -479,7 +478,7 @@ MVP는 단일 DB 테이블 큐 + 워커 1개부터 시작해도 충분합니다.
 5. Q: 정규화명 보여주면 유니패스에서 찾기 어려운가?
    - A: 원문 병행 표기로 해결 가능(원문/정규화/공매번호 동시 제공).
 6. Q: TTL 단일 기준이 뭔가?
-   - A: TTL 계산 시 기준 날짜를 `pbac_end_dttm` 하나로 고정해 혼선을 줄이는 것.
+   - A: TTL 계산 시 기준 날짜를 `auction_end_at` 하나로 고정해 혼선을 줄이는 것.
 7. Q: 스냅샷은 서버 로컬에 저장해도 되나?
    - A: 초기엔 가능하지만 장기적으로는 스토리지 분리(S3/MinIO/NAS) 권장. 로컬만 쓰면 유실 위험이 큼.
 8. Q: API 한도 100건/호출은 적절한가?
@@ -556,3 +555,4 @@ MVP는 단일 DB 테이블 큐 + 워커 1개부터 시작해도 충분합니다.
   3. rollback SQL(이전 명칭 복귀) 사전 준비
 
 즉, 현재 단계에서는 "기능 안정화 우선, 리네이밍은 점진 적용"이 가장 안전합니다.
+

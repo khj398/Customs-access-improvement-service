@@ -43,11 +43,12 @@
 | 컬럼 | 설명 |
 |---|---|
 | `pbac_no` | 공매번호(PK) |
-| `pbac_yy`, `pbac_dgcnt`, `pbac_tncnt` | 공매 연도/차수/회차 |
+| `pbac_nm` | 공매명 |
 | `cstm_sgn`, `snar_sgn`, `cargo_tpcd` | 세관/창고/화물유형 FK |
 | `pbac_strt_dttm`, `pbac_end_dttm` | 공매 시작/종료 시각 |
 | `bid_rstc_yn` | 입찰 제한 여부(Y/N) |
 | `elct_bid_eon` | 전자입찰 여부(Y/N) → N이면 일반입찰(현장) 가능성 |
+| `inqr_psbl_yn` | 조회 가능 여부 |
 | `created_at`, `updated_at` | 생성/수정 시각 |
 
 ### 1-6. `auction_item` (하위 물품)
@@ -140,7 +141,7 @@ DB 반영 상태:
 - 전자입찰/일반입찰 구분: `auction.elct_bid_eon`으로 **구분 가능**
 
 권장 보강(1차 DDL 후보):
-- `auction`에 `collector_source`(BUSINESS/PERSONAL/IMAGE) 또는 동등 필드 추가
+- `auction`에 `collector_source`(BUSINESS/PERSONAL) 또는 동등 필드 추가
 - `auction_item_image.source_type` 값 표준화(`UNIPASS_IMAGE`, `LIST_BUSINESS`, `LIST_PERSONAL`)
 
 
@@ -226,3 +227,4 @@ DB 반영 상태:
 2. 상태값(`status`)은 enum 사전을 테이블별로 일관되게 정의
 3. 검색 품질을 위해 원문(`cmdt_nm`)은 보존하고, 정규화명/토큰/동의어는 별도 관리
 4. 리네이밍이 필요하면 물리 교체보다 View/alias를 이용한 점진 전환 권장
+

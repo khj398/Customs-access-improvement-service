@@ -65,8 +65,8 @@ ETL은 `auction`, `auction_item`을 채운다.
 
 - 실행 파일: `etl/load_unipass_to_mysql.py`
 - 기본 입력 JSON(자동 탐색):
-  - `unipass_list_business.json` (BUSINESS)
-  - `unipass_list_personal.json` (PERSONAL)
+  - `unipass_all_2b.json` (BUSINESS)
+  - `unipass_all_2c.json` (PERSONAL)
   - `unipass_image.json` (IMAGE; 선택)
 - 커스텀 입력(선택): `UNIPASS_JSON_FILES` 환경변수 사용
   - 형식: `path[:collector_source[:source_name]]`를 콤마로 연결
@@ -75,7 +75,7 @@ ETL은 `auction`, `auction_item`을 채운다.
 python etl/load_unipass_to_mysql.py
 
 # 예시: 파일/소스 직접 지정
-UNIPASS_JSON_FILES="unipass_list_business.json:BUSINESS:unipass_list_business,unipass_list_personal.json:PERSONAL:unipass_list_personal,unipass_image.json:IMAGE:unipass_image" \
+UNIPASS_JSON_FILES="unipass_all_2b.json:BUSINESS:unipass_list_business,unipass_all_2c.json:PERSONAL:unipass_list_personal,unipass_image.json:IMAGE:unipass_image" \
 python etl/load_unipass_to_mysql.py
 ```
 

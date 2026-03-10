@@ -32,8 +32,8 @@ class DataSource:
 
 
 DEFAULT_SOURCES = [
-    DataSource("unipass_list_business.json", "BUSINESS", "unipass_list_business", "LIST_BUSINESS"),
-    DataSource("unipass_list_personal.json", "PERSONAL", "unipass_list_personal", "LIST_PERSONAL"),
+    DataSource("unipass_all_2b.json", "BUSINESS", "unipass_list_business", "LIST_BUSINESS"),
+    DataSource("unipass_all_2c.json", "PERSONAL", "unipass_list_personal", "LIST_PERSONAL"),
     DataSource("unipass_image.json", "IMAGE", "unipass_image", "UNIPASS_IMAGE"),
 ]
 
@@ -88,7 +88,7 @@ def resolve_sources() -> list[DataSource]:
     """
     환경변수 UNIPASS_JSON_FILES로 입력 파일을 지정할 수 있다.
     형식: path[:collector_source[:source_name]] 를 콤마로 연결
-    예: unipass_list_business.json:BUSINESS:unipass_list_business,unipass_list_personal.json:PERSONAL
+    예: unipass_all_2b.json:BUSINESS:unipass_list_business,unipass_all_2c.json:PERSONAL
     """
     env = os.getenv("UNIPASS_JSON_FILES", "").strip()
     if env:
@@ -99,17 +99,8 @@ def resolve_sources() -> list[DataSource]:
                 continue
             parts = [x.strip() for x in chunk.split(":")]
             path = parts[0]
-            inferred_collector = "BUSINESS"
-            low_path = os.path.basename(path).lower()
-            if "personal" in low_path or "2c" in low_path:
-                inferred_collector = "PERSONAL"
-            elif "image" in low_path:
-                inferred_collector = "IMAGE"
-            collector = parts[1].upper() if len(parts) >= 2 and parts[1] else inferred_collector
+            collector = parts[1].upper() if len(parts) >= 2 and parts[1] else "UNKNOWN"
             source_name = parts[2] if len(parts) >= 3 and parts[2] else f"unipass_{collector.lower()}"
-            allowed_collectors = {"BUSINESS", "PERSONAL", "IMAGE"}
-            if collector not in allowed_collectors:
-                raise ValueError(f"지원하지 않는 collector_source: {collector} (허용: BUSINESS/PERSONAL/IMAGE)")
             out.append(DataSource(path, collector, source_name, f"LIST_{collector}"))
         return out
 
@@ -494,7 +485,7 @@ def main():
     sources = resolve_sources()
     if not sources:
         raise FileNotFoundError(
-            "입력 JSON 파일이 없습니다. 기본 파일(unipass_list_business.json / unipass_list_personal.json / unipass_image.json) 또는 UNIPASS_JSON_FILES 환경변수를 확인하세요."
+            "입력 JSON 파일이 없습니다. 기본 파일(unipass_all_2b.json / unipass_all_2c.json / unipass_image.json) 또는 UNIPASS_JSON_FILES 환경변수를 확인하세요."
         )
 
     conn = pymysql.connect(**DB_CONFIG)
