@@ -32,6 +32,19 @@ def sanitize_pbac_no(pbac_no: str) -> str:
     return pbac_no.replace("/", "_").replace("\\", "_").strip()
 
 
+
+
+def pbac_digits(pbac_no: str) -> str:
+    return "".join(ch for ch in str(pbac_no) if ch.isdigit())
+
+
+def pbac_hyphenated(pbac_no: str) -> str:
+    digits = pbac_digits(pbac_no)
+    if len(digits) == 14:
+        return f"{digits[:3]}-{digits[3:5]}-{digits[5:7]}-{digits[7:13]}-{digits[13:14]}"
+    return pbac_no
+
+
 def read_pbac_nos_from_file(path: str) -> list[str]:
     p = Path(path)
     if not p.exists():
@@ -64,6 +77,23 @@ def default_pbac_nos() -> list[str]:
         if Path(filename).exists():
             out.extend(read_pbac_nos_from_file(filename))
     return list(dict.fromkeys(out))
+
+
+
+
+def find_target_row(page, pbac_no: str):
+    target_digits = pbac_digits(pbac_no)
+    rows = page.locator("#MYC0202002Q_table1 tbody tr")
+    row_count = rows.count()
+    for i in range(row_count):
+        row = rows.nth(i)
+        td = row.locator("td[name='pbacNo']")
+        if td.count() == 0:
+            continue
+        text = td.first.inner_text().strip()
+        if pbac_digits(text) == target_digits:
+            return row
+    return None
 
 
 def collect_one(page, pbac_no: str, base_output_dir: str) -> bool:
@@ -103,8 +133,9 @@ def collect_one(page, pbac_no: str, base_output_dir: str) -> bool:
     page.evaluate("myc_f_createLeftMenuLst('MYC_MNU_00000634', 'Y')")
     page.wait_for_timeout(3000)
 
+    digits = pbac_digits(pbac_no)
     parts = pbac_no.split("-")
-    is_business = parts[4] if len(parts) >= 5 else "1"
+    is_business = parts[4] if len(parts) >= 5 else (digits[-1] if len(digits) == 14 else "1")
     if is_business == "2":
         page.locator('#MYC0202002Q_cmdtTpcd2').check()
         page.wait_for_timeout(1000)
@@ -118,10 +149,9 @@ def collect_one(page, pbac_no: str, base_output_dir: str) -> bool:
         total_pages = page_lists.count()
 
         for index in range(1, total_pages + 1):
-            cell = page.locator("td[name='pbacNo']", has_text=pbac_no)
-            target_row = cell.locator("xpath=ancestor::tr")
+            target_row = find_target_row(page, pbac_no)
 
-            if target_row.count() > 0:
+            if target_row is not None:
                 target_row.locator("a[name='cmdtNm']").first.click()
                 page.wait_for_load_state("networkidle", timeout=30000)
                 page_found = True
@@ -193,7 +223,7 @@ def main():
         ok = 0
         for i, pbac_no in enumerate(pbac_nos, start=1):
             page = browser.new_page()
-            print(f"[{i}/{len(pbac_nos)}] 수집 시작: {pbac_no}")
+            print(f"[{i}/{len(pbac_nos)}] 수집 시작: {pbac_no} ({pbac_hyphenated(pbac_no)})")
             if collect_one(page, pbac_no, args.output_dir):
                 ok += 1
             page.close()

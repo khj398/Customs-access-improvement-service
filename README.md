@@ -72,7 +72,6 @@ CUSTOMS-ACCESS-IMPROVEMENT-SERVICE/
 │  └─ README.md                        # DB 실행 순서/설계 근거
 ├─ cais_frontend/                      # Flutter 프론트엔드
 ├─ backend/                            # API 서버 (예정)
-├─ unipass_all.json                    # 수집 결과(JSON)
 └─ README.md
 
 --- ===================================================================================================
@@ -100,14 +99,15 @@ CUSTOMS-ACCESS-IMPROVEMENT-SERVICE/
 ## End-to-End 실행 순서 (처음 실행 기준)
 
 ### Step 0) (선택) 유니패스 데이터 수집 → JSON 생성
-이미 unipass_all.json이 있으면 생략 가능하다.
+이미 목록 JSON(`unipass_all_2b.json`/`unipass_all_2c.json`)이 있으면 생략 가능하다.
 python project/AWSLambda/unipass_list.py
 
 이미지 상세 수집은 단건/일괄 모두 지원한다.
 python project/AWSLambda/UNIPASS_Image.py --pbac-no "020-26-01-900003-1" --output-dir downloaded_images
-python project/AWSLambda/UNIPASS_Image.py --output-dir downloaded_images   # 기본: unipass_all_2b.json + unipass_all_2c.json의 전체 공매번호
+python project/AWSLambda/UNIPASS_Image.py --output-dir downloaded_images   # 기본: unipass_all_2b.json + unipass_all_2c.json 전체 공매번호
 
 파일명은 `downloaded_images/<pbacNo>/0_{cmdtLnNo(앞0제거)}_{index}.gif` 규칙으로 저장된다.
+공매번호는 하이픈 유무(예: 02026019000031 / 020-26-01-900003-1)를 모두 지원한다.
 
 ---
 
