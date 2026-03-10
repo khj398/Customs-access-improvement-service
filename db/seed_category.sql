@@ -13,19 +13,30 @@ USE customs_auction;
 -- -----------------------------
 -- LEVEL 1 (대분류)
 -- -----------------------------
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
-(NULL, 1, '산업·장비', 'Industrial & Equipment'),
-(NULL, 1, '전자·전기', 'Electronics & Electrical'),
-(NULL, 1, '컴퓨터·모바일', 'Computers & Mobile'),
-(NULL, 1, '부품·소모품', 'Parts & Consumables'),
-(NULL, 1, '가전', 'Home Appliances'),
-(NULL, 1, '의류·패션잡화', 'Fashion'),
-(NULL, 1, '생활·주방', 'Home & Kitchen'),
-(NULL, 1, '식품·음료', 'Food & Beverage'),
-(NULL, 1, '뷰티·위생', 'Beauty & Hygiene'),
-(NULL, 1, '스포츠·레저', 'Sports & Leisure'),
-(NULL, 1, '자동차·공구', 'Automotive & Tools'),
-(NULL, 1, '기타', 'Others');
+-- NOTE: parent_id IS NULL 은 UNIQUE 키 중복 방지가 되지 않으므로
+--       NOT EXISTS 조건으로 대분류 중복 생성을 방지한다.
+INSERT INTO category (parent_id, level, name_ko, name_en)
+SELECT NULL, 1, t.name_ko, t.name_en
+FROM (
+  SELECT '산업·장비' AS name_ko, 'Industrial & Equipment' AS name_en
+  UNION ALL SELECT '전자·전기', 'Electronics & Electrical'
+  UNION ALL SELECT '컴퓨터·모바일', 'Computers & Mobile'
+  UNION ALL SELECT '부품·소모품', 'Parts & Consumables'
+  UNION ALL SELECT '가전', 'Home Appliances'
+  UNION ALL SELECT '의류·패션잡화', 'Fashion'
+  UNION ALL SELECT '생활·주방', 'Home & Kitchen'
+  UNION ALL SELECT '식품·음료', 'Food & Beverage'
+  UNION ALL SELECT '뷰티·위생', 'Beauty & Hygiene'
+  UNION ALL SELECT '스포츠·레저', 'Sports & Leisure'
+  UNION ALL SELECT '자동차·공구', 'Automotive & Tools'
+  UNION ALL SELECT '기타', 'Others'
+) t
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM category c
+  WHERE c.parent_id IS NULL
+    AND c.name_ko = t.name_ko
+);
 
 -- ROOT ID 가져오기
 SELECT category_id INTO @ROOT_INDUSTRY FROM category WHERE parent_id IS NULL AND name_ko='산업·장비' LIMIT 1;
@@ -45,7 +56,7 @@ SELECT category_id INTO @ROOT_OTHER    FROM category WHERE parent_id IS NULL AND
 -- -----------------------------
 -- LEVEL 2 (중분류) - 산업·장비 중심
 -- -----------------------------
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@ROOT_INDUSTRY, 2, '산업장비', 'Industrial Equipment'),
 (@ROOT_INDUSTRY, 2, '계측·시험', 'Measurement & Test'),
 (@ROOT_INDUSTRY, 2, '안전·보호', 'Safety & Protection'),
@@ -59,7 +70,7 @@ SELECT category_id INTO @IND_FLUID FROM category WHERE parent_id=@ROOT_INDUSTRY 
 SELECT category_id INTO @IND_MOTOR FROM category WHERE parent_id=@ROOT_INDUSTRY AND name_ko='모터·구동' LIMIT 1;
 
 -- LEVEL 3 (소분류) - 산업·장비
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@IND_EQUIP, 3, '산업기계', 'Machinery'),
 (@IND_EQUIP, 3, '공정장비', 'Process Equipment'),
 
@@ -81,7 +92,7 @@ INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
 -- -----------------------------
 -- LEVEL 2/3 (중/소분류) - 전자·전기
 -- -----------------------------
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@ROOT_ELECTRIC, 2, '전자부품', 'Electronic Components'),
 (@ROOT_ELECTRIC, 2, '전기부품', 'Electrical Components'),
 (@ROOT_ELECTRIC, 2, '전원·변환', 'Power & Conversion');
@@ -90,7 +101,7 @@ SELECT category_id INTO @ELC_EPART FROM category WHERE parent_id=@ROOT_ELECTRIC 
 SELECT category_id INTO @ELC_PART  FROM category WHERE parent_id=@ROOT_ELECTRIC AND name_ko='전기부품' LIMIT 1;
 SELECT category_id INTO @ELC_PWR   FROM category WHERE parent_id=@ROOT_ELECTRIC AND name_ko='전원·변환' LIMIT 1;
 
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@ELC_EPART, 3, 'PCB·모듈', 'PCB & Modules'),
 (@ELC_EPART, 3, '커넥터·케이블', 'Connectors & Cables'),
 (@ELC_EPART, 3, '센서·계측', 'Sensors & Instrumentation'),
@@ -105,7 +116,7 @@ INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
 -- -----------------------------
 -- LEVEL 2/3 - 컴퓨터·모바일
 -- -----------------------------
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@ROOT_COMPUTER, 2, '컴퓨터', 'Computer'),
 (@ROOT_COMPUTER, 2, '모바일', 'Mobile'),
 (@ROOT_COMPUTER, 2, '저장장치', 'Storage');
@@ -114,7 +125,7 @@ SELECT category_id INTO @CMP_PC   FROM category WHERE parent_id=@ROOT_COMPUTER A
 SELECT category_id INTO @CMP_MOB  FROM category WHERE parent_id=@ROOT_COMPUTER AND name_ko='모바일' LIMIT 1;
 SELECT category_id INTO @CMP_STOR FROM category WHERE parent_id=@ROOT_COMPUTER AND name_ko='저장장치' LIMIT 1;
 
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@CMP_PC,   3, '본체·서버', 'Desktop & Server'),
 (@CMP_PC,   3, '주변기기', 'Peripherals'),
 (@CMP_MOB,  3, '스마트폰·태블릿', 'Phone & Tablet'),
@@ -125,7 +136,7 @@ INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
 -- -----------------------------
 -- LEVEL 2/3 - 부품·소모품
 -- -----------------------------
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@ROOT_PARTS, 2, '배터리·전지', 'Battery'),
 (@ROOT_PARTS, 2, '화학·오일·윤활', 'Chemical & Oil'),
 (@ROOT_PARTS, 2, '포장·소모품', 'Packaging');
@@ -134,7 +145,7 @@ SELECT category_id INTO @PRT_BATT  FROM category WHERE parent_id=@ROOT_PARTS AND
 SELECT category_id INTO @PRT_CHEM  FROM category WHERE parent_id=@ROOT_PARTS AND name_ko='화학·오일·윤활' LIMIT 1;
 SELECT category_id INTO @PRT_PACK  FROM category WHERE parent_id=@ROOT_PARTS AND name_ko='포장·소모품' LIMIT 1;
 
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@PRT_BATT, 3, '리튬배터리', 'Lithium Battery'),
 (@PRT_BATT, 3, '일반 배터리', 'Battery'),
 
@@ -148,14 +159,14 @@ INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
 -- -----------------------------
 -- LEVEL 2/3 - 식품·음료 (주류 포함)
 -- -----------------------------
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@ROOT_FOOD, 2, '음료', 'Beverage'),
 (@ROOT_FOOD, 2, '식품', 'Food');
 
 SELECT category_id INTO @FOOD_BEV FROM category WHERE parent_id=@ROOT_FOOD AND name_ko='음료' LIMIT 1;
 SELECT category_id INTO @FOOD_FD  FROM category WHERE parent_id=@ROOT_FOOD AND name_ko='식품' LIMIT 1;
 
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@FOOD_BEV, 3, '주류', 'Alcohol'),
 (@FOOD_BEV, 3, '비주류', 'Non-alcohol'),
 (@FOOD_FD,  3, '가공식품', 'Processed Food'),
@@ -165,14 +176,14 @@ INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
 -- -----------------------------
 -- LEVEL 2/3 - 자동차·공구
 -- -----------------------------
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@ROOT_AUTO, 2, '자동차부품', 'Auto Parts'),
 (@ROOT_AUTO, 2, '공구', 'Tools');
 
 SELECT category_id INTO @AUTO_PART FROM category WHERE parent_id=@ROOT_AUTO AND name_ko='자동차부품' LIMIT 1;
 SELECT category_id INTO @AUTO_TOOL FROM category WHERE parent_id=@ROOT_AUTO AND name_ko='공구' LIMIT 1;
 
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@AUTO_PART, 3, '타이어·휠', 'Tire & Wheel'),
 (@AUTO_PART, 3, '엔진·필터', 'Engine & Filter'),
 (@AUTO_TOOL, 3, '전동공구', 'Power Tools'),
@@ -182,12 +193,12 @@ INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
 -- -----------------------------
 -- 기타(미분류) - 최소한만
 -- -----------------------------
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@ROOT_OTHER, 2, '미분류', 'Uncategorized');
 
 SELECT category_id INTO @OTHER_UNC FROM category WHERE parent_id=@ROOT_OTHER AND name_ko='미분류' LIMIT 1;
 
-INSERT INTO category (parent_id, level, name_ko, name_en) VALUES
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@OTHER_UNC, 3, '기타', 'Misc');
 
 -- -------------------------------------------------

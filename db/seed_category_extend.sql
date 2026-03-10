@@ -1,9 +1,20 @@
 USE customs_auction;
 
+-- 확장 시드가 단독 실행되더라도 부모 카테고리를 최소 보장
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
+(NULL, 1, '자동차·공구', 'Automotive & Tools'),
+(NULL, 1, '부품·소모품', 'Parts & Consumables'),
+(NULL, 1, '스포츠·레저', 'Sports & Leisure');
+
 -- 부모 ID 가져오기
-SELECT category_id INTO @L1_AUTO    FROM category WHERE parent_id IS NULL AND name_ko='자동차·공구' LIMIT 1;
-SELECT category_id INTO @L1_PARTS   FROM category WHERE parent_id IS NULL AND name_ko='부품·소모품' LIMIT 1;
-SELECT category_id INTO @L1_SPORTS  FROM category WHERE parent_id IS NULL AND name_ko='스포츠·레저' LIMIT 1;
+SELECT category_id INTO @L1_AUTO   FROM category WHERE parent_id IS NULL AND name_ko='자동차·공구' LIMIT 1;
+SELECT category_id INTO @L1_PARTS  FROM category WHERE parent_id IS NULL AND name_ko='부품·소모품' LIMIT 1;
+SELECT category_id INTO @L1_SPORTS FROM category WHERE parent_id IS NULL AND name_ko='스포츠·레저' LIMIT 1;
+
+-- 하위 부모 카테고리도 보장
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
+(@L1_AUTO, 2, '자동차부품', 'Auto Parts'),
+(@L1_PARTS, 2, '화학·오일·윤활', 'Chemical & Oil');
 
 -- 자동차부품 / 공구 부모
 SELECT category_id INTO @AUTO_PART  FROM category WHERE parent_id=@L1_AUTO AND name_ko='자동차부품' LIMIT 1;
@@ -35,5 +46,4 @@ INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 -- 4) 스포츠·레저 > 취미·악기 > 악기
 INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@SPORT_HOBBY, 3, '악기', 'Musical Instruments');
-
 
