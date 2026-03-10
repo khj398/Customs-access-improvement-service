@@ -43,11 +43,12 @@
 | 컬럼 | 설명 |
 |---|---|
 | `pbac_no` | 공매번호(PK) |
-| `pbac_yy`, `pbac_dgcnt`, `pbac_tncnt` | 공매 연도/차수/회차 |
+| `pbac_nm` | 공매명 |
 | `cstm_sgn`, `snar_sgn`, `cargo_tpcd` | 세관/창고/화물유형 FK |
 | `pbac_strt_dttm`, `pbac_end_dttm` | 공매 시작/종료 시각 |
 | `bid_rstc_yn` | 입찰 제한 여부(Y/N) |
 | `elct_bid_eon` | 전자입찰 여부(Y/N) → N이면 일반입찰(현장) 가능성 |
+| `inqr_psbl_yn` | 조회 가능 여부 |
 | `created_at`, `updated_at` | 생성/수정 시각 |
 
 ### 1-6. `auction_item` (하위 물품)
