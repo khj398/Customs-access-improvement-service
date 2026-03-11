@@ -107,6 +107,7 @@ python project/AWSLambda/UNIPASS_Image.py
 
 파일명은 `downloaded_images/<pbacNo digits>/0_{cmdtLnNo(앞0제거)}_{index}.gif` 규칙으로 저장된다.
 목록 JSON의 공매번호가 하이픈 없이 저장되어 있어도(예: `02026019000031`) 수집 시 자동으로 하이픈 포맷으로 보정해 조회한다.
+목록 JSON이 비어있는 경우는 오류로 처리하지 않고, 수집 대상이 없다는 메시지만 출력 후 종료한다.
 
 ---
 
