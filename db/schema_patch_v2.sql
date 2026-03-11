@@ -8,8 +8,21 @@
 USE customs_auction;
 
 -- 1) auction: 수집 출처 구분 컬럼 추가
-ALTER TABLE auction
-  ADD COLUMN IF NOT EXISTS collector_source VARCHAR(20) NULL COMMENT '수집 출처(BUSINESS/PERSONAL/IMAGE)' AFTER cargo_tpcd;
+SET @col_exists := (
+  SELECT COUNT(1)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'auction'
+    AND column_name = 'collector_source'
+);
+SET @col_sql := IF(
+  @col_exists = 0,
+  "ALTER TABLE auction ADD COLUMN collector_source VARCHAR(20) NULL COMMENT '수집 출처(BUSINESS/PERSONAL/IMAGE)' AFTER cargo_tpcd",
+  'SELECT 1'
+);
+PREPARE stmt FROM @col_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 SET @idx_exists := (
   SELECT COUNT(1)
