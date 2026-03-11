@@ -140,6 +140,7 @@ CREATE TABLE IF NOT EXISTS auction (
   cstm_sgn VARCHAR(10) NULL COMMENT '세관부호(pbacCstmSgn)',
   snar_sgn VARCHAR(20) NULL COMMENT '창고부호(snarSgn)',
   cargo_tpcd VARCHAR(10) NULL COMMENT '화물유형코드(pbacTrgtCargTpcd)',
+  collector_source VARCHAR(20) NULL COMMENT '수집 출처(BUSINESS/PERSONAL/IMAGE)',
 
   pbac_strt_dttm DATETIME NULL COMMENT '공매 시작일시(pbacStrtDttm)',
   pbac_end_dttm DATETIME NULL COMMENT '공매 종료일시(pbacEndDttm)',
@@ -156,6 +157,7 @@ CREATE TABLE IF NOT EXISTS auction (
   INDEX idx_auction_customs (cstm_sgn),
   INDEX idx_auction_wh (snar_sgn),
   INDEX idx_auction_cargo (cargo_tpcd),
+  INDEX idx_auction_collector_source (collector_source),
 
   CONSTRAINT fk_auction_customs
     FOREIGN KEY (cstm_sgn) REFERENCES customs_office(cstm_sgn)
@@ -364,7 +366,7 @@ CREATE TABLE IF NOT EXISTS auction_item_image (
   cmdt_ln_no   VARCHAR(10) NOT NULL COMMENT '물품라인번호',
   image_seq    INT NOT NULL DEFAULT 1 COMMENT '이미지 순번(1부터)',
   image_url    TEXT NOT NULL COMMENT '이미지 URL',
-  source_type  VARCHAR(20) NOT NULL DEFAULT 'LIST_API' COMMENT '수집 출처(LIST_API/DETAIL_PAGE/UNIPASS_IMAGE_FILE 등)',
+  source_type  VARCHAR(20) NOT NULL COMMENT '수집 출처(LIST_BUSINESS/LIST_PERSONAL/UNIPASS_IMAGE)',
   created_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 시각',
   updated_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '갱신 시각',
 
