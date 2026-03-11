@@ -1,6 +1,6 @@
 /* =========================================================
    customs_auction v2 patch
-   - collector 출처(BUSINESS/PERSONAL/UNKNOWN/IMAGE) 반영
+   - collector 출처(BUSINESS/PERSONAL/IMAGE) 반영
    - ingestion/raw payload/change event 테이블 추가
    - 큐 테이블(재수집/분류/알림) 추가
    ========================================================= */
@@ -8,8 +8,21 @@
 USE customs_auction;
 
 -- 1) auction: 수집 출처 구분 컬럼 추가
-ALTER TABLE auction
-  ADD COLUMN IF NOT EXISTS collector_source VARCHAR(20) NULL COMMENT '수집 출처(UNKNOWN/BUSINESS/PERSONAL/IMAGE)' AFTER cargo_tpcd;
+SET @col_exists := (
+  SELECT COUNT(1)
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'auction'
+    AND column_name = 'collector_source'
+);
+SET @col_sql := IF(
+  @col_exists = 0,
+  "ALTER TABLE auction ADD COLUMN collector_source VARCHAR(20) NULL COMMENT '수집 출처(BUSINESS/PERSONAL/IMAGE)' AFTER cargo_tpcd",
+  'SELECT 1'
+);
+PREPARE stmt FROM @col_sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 SET @idx_exists := (
   SELECT COUNT(1)
@@ -29,7 +42,7 @@ DEALLOCATE PREPARE stmt;
 CREATE TABLE IF NOT EXISTS ingestion_run (
   ingestion_run_id BIGINT NOT NULL AUTO_INCREMENT,
   source_name VARCHAR(50) NOT NULL COMMENT '수집기 이름(unipass_list_business 등)',
-  collector_source VARCHAR(20) NOT NULL DEFAULT 'UNKNOWN' COMMENT 'UNKNOWN/BUSINESS/PERSONAL/IMAGE',
+  collector_source VARCHAR(20) NOT NULL COMMENT 'BUSINESS/PERSONAL/IMAGE',
   started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   finished_at TIMESTAMP NULL,
   status ENUM('RUNNING','SUCCESS','FAILED','PARTIAL') NOT NULL DEFAULT 'RUNNING',
@@ -144,7 +157,7 @@ CREATE TABLE IF NOT EXISTS notification_job_queue (
 -- 6) 이미지 source_type 표준화 예시(선택)
 -- UPDATE auction_item_image
 -- SET source_type = CASE
---   WHEN source_type IN ('LIST_API', 'LIST_GENERAL', 'LIST_UNKNOWN') THEN 'LIST_UNKNOWN'
+--   WHEN source_type IN ('LIST_API', 'LIST_GENERAL') THEN 'LIST_BUSINESS'
 --   WHEN source_type IN ('LIST_BUSINESS') THEN 'LIST_BUSINESS'
 --   WHEN source_type IN ('LIST_PERSONAL') THEN 'LIST_PERSONAL'
 --   ELSE source_type
