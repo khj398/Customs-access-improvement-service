@@ -349,13 +349,15 @@ def insert_change_event(cur, pbac_no: str, pbac_srno: str, cmdt_ln_no: str, even
 
 
 def _load_items_by_cmdt_ln_no(cur, pbac_no: str) -> dict[str, list[dict]]:
+    normalized_pbac_no = _normalize_pbac_no(pbac_no)
     cur.execute(
         """
-        SELECT pbac_srno, cmdt_ln_no
+        SELECT pbac_no, pbac_srno, cmdt_ln_no
         FROM auction_item
         WHERE pbac_no = %s
+           OR REPLACE(pbac_no, '-', '') = %s
         """,
-        (pbac_no,),
+        (pbac_no, normalized_pbac_no),
     )
     items = cur.fetchall()
 
@@ -419,7 +421,7 @@ def _upsert_image_files(cur, image_files: list[Path], source_type: str, fallback
         cur.execute(
             SQL_UPSERT_ITEM_IMAGE,
             (
-                resolved_pbac_no,
+                item["pbac_no"],
                 item["pbac_srno"],
                 item["cmdt_ln_no"],
                 image_seq,
