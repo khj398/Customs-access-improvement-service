@@ -103,6 +103,91 @@ def collect_single_pbac(page, pbac_no: str) -> bool:
             image_count += 1
             file_name = f"0_{cmdt_ln_no}_{current_index}.gif"
 
+
+def digits_only(value: str) -> str:
+    return "".join(ch for ch in str(value) if ch.isdigit())
+
+
+def to_hyphen_pbac_no(pbac_no: str) -> str:
+    """
+    공매번호 하이픈 포맷 보정
+    예) 02026019000031 -> 020-26-01-900003-1
+    """
+    digits = digits_only(pbac_no)
+    if len(digits) == 14:
+        return f"{digits[:3]}-{digits[3:5]}-{digits[5:7]}-{digits[7:13]}-{digits[13]}"
+    return str(pbac_no).strip()
+
+
+def load_pbac_nos() -> list[str]:
+    """
+    미리 수집한 목록 JSON(unipass_all_2b.json / unipass_all_2c.json)에서
+    pbacNo를 읽고, 중복 제거 후 반환
+    """
+    pbac_nos: list[str] = []
+    for filename in ("unipass_all_2b.json", "unipass_all_2c.json"):
+        path = Path(filename)
+        if not path.exists():
+            continue
+
+        with path.open("r", encoding="utf-8") as f:
+            rows = json.load(f)
+
+        if not isinstance(rows, list):
+            continue
+
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            pbac_no = str(row.get("pbacNo", "")).strip()
+            if pbac_no:
+                pbac_nos.append(pbac_no)
+
+    # digits 기준 중복 제거
+    uniq: dict[str, str] = {}
+    for pbac_no in pbac_nos:
+        key = digits_only(pbac_no)
+        if key and key not in uniq:
+            uniq[key] = to_hyphen_pbac_no(pbac_no)
+
+    return list(uniq.values())
+
+
+def find_target_row(page, pbac_no: str):
+    target_digits = digits_only(pbac_no)
+    rows = page.locator("#MYC0202002Q_table1 tbody tr")
+    for i in range(rows.count()):
+        row = rows.nth(i)
+        cell = row.locator("td[name='pbacNo']")
+        if cell.count() == 0:
+            continue
+        cell_digits = digits_only(cell.first.inner_text().strip())
+        if cell_digits == target_digits:
+            return row
+    return None
+
+
+def collect_single_pbac(page, pbac_no: str) -> bool:
+    # ETL 매핑 호환을 위해 폴더명은 digits 형태로 고정 저장
+    save_dir = os.path.join(TMP_PATH, digits_only(pbac_no))
+    os.makedirs(save_dir, exist_ok=True)
+
+    download_count = 0
+    cmdt_ln_no = "1"
+    image_count = 0
+
+    def handle_response(response):
+        nonlocal download_count, cmdt_ln_no, image_count
+
+        url = response.url
+        content_type = response.headers.get("content-type", "")
+
+        if "DOC" in url and "image" in content_type:
+            download_count += 1
+            current_index = image_count
+            image_count += 1
+            file_name = f"0_{cmdt_ln_no}_{current_index}.gif"
+
             try:
                 image_buffer = response.body()
                 file_path = os.path.join(save_dir, file_name)
@@ -220,9 +305,6 @@ def main():
             page.close()
 
         browser.close()
-
-    print(f"완료: {ok}/{len(pbac_nos)} 건 성공")
-
 
     print(f"완료: {ok}/{len(pbac_nos)} 건 성공")
 

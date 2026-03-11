@@ -339,9 +339,15 @@ def _load_items_by_cmdt_ln_no(cur, pbac_no: str) -> dict[str, list[dict]]:
     return by_norm_cmdt_ln_no
 
 
+def _normalize_pbac_no(value: str) -> str:
+    digits = "".join(ch for ch in str(value) if ch.isdigit())
+    return digits if digits else str(value).strip()
+
+
 def _upsert_image_files_for_pbac(cur, pbac_no: str, image_files: list[Path], source_type: str) -> tuple[int, int]:
     pattern = re.compile(r"^0_(\d+)_(\d+)\.gif$", re.IGNORECASE)
-    by_norm_cmdt_ln_no = _load_items_by_cmdt_ln_no(cur, pbac_no)
+    normalized_pbac_no = _normalize_pbac_no(pbac_no)
+    by_norm_cmdt_ln_no = _load_items_by_cmdt_ln_no(cur, normalized_pbac_no)
 
     upsert_cnt = 0
     error_cnt = 0
@@ -365,8 +371,8 @@ def _upsert_image_files_for_pbac(cur, pbac_no: str, image_files: list[Path], sou
         item = candidates[0]
         cur.execute(
             SQL_UPSERT_ITEM_IMAGE,
-            (
-                pbac_no,
+                (
+                normalized_pbac_no,
                 item["pbac_srno"],
                 item["cmdt_ln_no"],
                 image_seq,

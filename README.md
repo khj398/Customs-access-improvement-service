@@ -81,7 +81,7 @@ CUSTOMS-ACCESS-IMPROVEMENT-SERVICE/
 ## 🔍 이미지 수집 현황
 - 수집 스크립트(`project/AWSLambda/unipass_list.py`)가 각 품목에 대해 `image_urls` / `image_count` 필드를 함께 저장하도록 확장되었다.
 - 목록 응답에 이미지 힌트가 없으면 `image_urls`는 빈 배열이며, 향후 상세 API/상세 페이지 크롤링으로 보강 가능하다.
-- ETL(`etl/load_unipass_to_mysql.py`)은 `image_urls`뿐 아니라 `downloaded_images`의 `.gif` 파일도 `auction_item_image`에 UPSERT할 수 있다 (`UNIPASS_IMAGE_PBAC_NO` 필요).
+- ETL(`etl/load_unipass_to_mysql.py`)은 `image_urls`뿐 아니라 `downloaded_images/<pbac_no>/...`의 `.gif` 파일도 `auction_item_image`에 UPSERT할 수 있다 (레거시 단일 폴더일 때만 `UNIPASS_IMAGE_PBAC_NO` 필요).
 
 ---
 
@@ -105,7 +105,7 @@ python project/AWSLambda/unipass_list.py
 이미지 상세 수집은 미리 수집한 목록 JSON(`unipass_all_2b.json`, `unipass_all_2c.json`)의 공매번호를 자동 순회한다.
 python project/AWSLambda/UNIPASS_Image.py
 
-파일명은 `downloaded_images/<pbacNo>/0_{cmdtLnNo(앞0제거)}_{index}.gif` 규칙으로 저장된다.
+파일명은 `downloaded_images/<pbacNo digits>/0_{cmdtLnNo(앞0제거)}_{index}.gif` 규칙으로 저장된다.
 목록 JSON의 공매번호가 하이픈 없이 저장되어 있어도(예: `02026019000031`) 수집 시 자동으로 하이픈 포맷으로 보정해 조회한다.
 
 ---
