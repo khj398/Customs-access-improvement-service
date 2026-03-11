@@ -356,21 +356,39 @@ def _normalize_pbac_no(value: str) -> str:
     return digits if digits else str(value).strip()
 
 
-def _upsert_image_files_for_pbac(cur, pbac_no: str, image_files: list[Path], source_type: str) -> tuple[int, int]:
-    pattern = re.compile(r"^0_(\d+)_(\d+)\.gif$", re.IGNORECASE)
-    normalized_pbac_no = _normalize_pbac_no(pbac_no)
-    by_norm_cmdt_ln_no = _load_items_by_cmdt_ln_no(cur, normalized_pbac_no)
+IMAGE_FILE_PATTERN = re.compile(r"^(\d+)_(\d+)_(\d+)\.(gif|jpg|jpeg|png|webp|bmp)$", re.IGNORECASE)
+
+
+def _resolve_image_pbac_no(file_pbac_no: str, fallback_pbac_no: Optional[str]) -> Optional[str]:
+    if file_pbac_no and file_pbac_no != "0":
+        return _normalize_pbac_no(file_pbac_no)
+    if fallback_pbac_no:
+        return _normalize_pbac_no(fallback_pbac_no)
+    return None
+
+
+def _upsert_image_files(cur, image_files: list[Path], source_type: str, fallback_pbac_no: Optional[str] = None) -> tuple[int, int]:
+    item_cache: dict[str, dict[str, list[dict]]] = {}
 
     upsert_cnt = 0
     error_cnt = 0
 
     for file in image_files:
-        m = pattern.match(file.name)
+        m = IMAGE_FILE_PATTERN.match(file.name)
         if not m:
             continue
 
-        norm_cmdt_ln_no = str(int(m.group(1)))
-        image_seq = int(m.group(2)) + 1
+        resolved_pbac_no = _resolve_image_pbac_no(m.group(1), fallback_pbac_no)
+        if not resolved_pbac_no:
+            error_cnt += 1
+            continue
+
+        if resolved_pbac_no not in item_cache:
+            item_cache[resolved_pbac_no] = _load_items_by_cmdt_ln_no(cur, resolved_pbac_no)
+
+        norm_cmdt_ln_no = str(int(m.group(2)))
+        image_seq = int(m.group(3)) + 1
+        by_norm_cmdt_ln_no = item_cache[resolved_pbac_no]
         candidates = by_norm_cmdt_ln_no.get(norm_cmdt_ln_no, [])
 
         if not candidates:
@@ -383,8 +401,8 @@ def _upsert_image_files_for_pbac(cur, pbac_no: str, image_files: list[Path], sou
         item = candidates[0]
         cur.execute(
             SQL_UPSERT_ITEM_IMAGE,
-                (
-                normalized_pbac_no,
+            (
+                resolved_pbac_no,
                 item["pbac_srno"],
                 item["cmdt_ln_no"],
                 image_seq,
@@ -398,10 +416,9 @@ def _upsert_image_files_for_pbac(cur, pbac_no: str, image_files: list[Path], sou
 
 
 def run_image_dir_source(conn, source: DataSource) -> tuple[int, int, int]:
-    pattern = re.compile(r"^0_(\d+)_(\d+)\.gif$", re.IGNORECASE)
     root = Path(source.path)
 
-    # 우선순위 1) 하위 폴더별 처리: downloaded_images/<pbac_no>/0_x_y.gif
+    # 우선순위 1) 하위 폴더별 처리: downloaded_images/<pbac_no>/<pbac_no>_x_y.gif (접두 공매번호가 0이어도 폴더명으로 보정)
     pbac_dirs = [d for d in root.iterdir() if d.is_dir()]
 
     # 우선순위 2) 레거시 단일 폴더 + 환경변수 지정
@@ -411,9 +428,9 @@ def run_image_dir_source(conn, source: DataSource) -> tuple[int, int, int]:
         total_file_count = 0
         if pbac_dirs:
             for d in pbac_dirs:
-                total_file_count += len([f for f in d.iterdir() if f.is_file() and pattern.match(f.name)])
+                total_file_count += len([f for f in d.iterdir() if f.is_file() and IMAGE_FILE_PATTERN.match(f.name)])
         else:
-            total_file_count = len([f for f in root.iterdir() if f.is_file() and pattern.match(f.name)])
+            total_file_count = len([f for f in root.iterdir() if f.is_file() and IMAGE_FILE_PATTERN.match(f.name)])
 
         cur.execute(SQL_INSERT_INGESTION_RUN, (source.source_name, source.collector_source, total_file_count))
         ingestion_run_id = cur.lastrowid
@@ -429,19 +446,17 @@ def run_image_dir_source(conn, source: DataSource) -> tuple[int, int, int]:
                     pbac_no = pbac_dir.name.strip()
                     if not pbac_no:
                         continue
-                    image_files = sorted([f for f in pbac_dir.iterdir() if f.is_file() and pattern.match(f.name)])
-                    upsert_cnt, error_cnt = _upsert_image_files_for_pbac(cur, pbac_no, image_files, source.image_source_type)
+                    image_files = sorted([f for f in pbac_dir.iterdir() if f.is_file() and IMAGE_FILE_PATTERN.match(f.name)])
+                    upsert_cnt, error_cnt = _upsert_image_files(cur, image_files, source.image_source_type, fallback_pbac_no=pbac_no)
                     total_upsert_cnt += upsert_cnt
                     total_error_cnt += error_cnt
             else:
+                image_files = sorted([f for f in root.iterdir() if f.is_file() and IMAGE_FILE_PATTERN.match(f.name)])
+                upsert_cnt, error_cnt = _upsert_image_files(cur, image_files, source.image_source_type, fallback_pbac_no=legacy_pbac_no or None)
                 if not legacy_pbac_no:
-                    print("⚠️  SKIP image_dir source: 폴더 구조(downloaded_images/<pbac_no>/...)가 없으면 UNIPASS_IMAGE_PBAC_NO가 필요합니다.")
-                    total_error_cnt += 1
-                else:
-                    image_files = sorted([f for f in root.iterdir() if f.is_file() and pattern.match(f.name)])
-                    upsert_cnt, error_cnt = _upsert_image_files_for_pbac(cur, legacy_pbac_no, image_files, source.image_source_type)
-                    total_upsert_cnt += upsert_cnt
-                    total_error_cnt += error_cnt
+                    print("ℹ️  UNIPASS_IMAGE_PBAC_NO 미지정: 파일명 접두 공매번호(예: 0202601900003_1_0.gif)를 우선 사용합니다. 접두가 0이면 매칭 오류로 집계됩니다.")
+                total_upsert_cnt += upsert_cnt
+                total_error_cnt += error_cnt
 
             final_status = "PARTIAL" if total_error_cnt > 0 else "SUCCESS"
             cur.execute(SQL_FINISH_INGESTION_RUN, (final_status, total_upsert_cnt, total_error_cnt, None, ingestion_run_id))
@@ -632,7 +647,7 @@ def main():
     sources = resolve_sources()
     if not sources:
         raise FileNotFoundError(
-            "입력 소스가 없습니다. 기본 JSON(unipass_all_2b.json / unipass_all_2c.json / unipass_image.json) 또는 downloaded_images/<pbac_no>/... (레거시: UNIPASS_IMAGE_PBAC_NO), UNIPASS_JSON_FILES 환경변수를 확인하세요."
+            "입력 소스가 없습니다. 기본 JSON(unipass_all_2b.json / unipass_all_2c.json / unipass_image.json) 또는 downloaded_images/<pbac_no>/... (단일 폴더는 파일명 공매번호 접두 또는 UNIPASS_IMAGE_PBAC_NO), UNIPASS_JSON_FILES 환경변수를 확인하세요."
         )
 
     conn = pymysql.connect(**DB_CONFIG)
