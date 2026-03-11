@@ -12,13 +12,25 @@ HEADLESS = False
 # 임시 공매 번호, 실제 구현은 파라미터로 받도록 수정
 cmdtNm_value = "020-26-01-900003-1"
 
+def _extract_pbac_no(cmdt_nm_value: str) -> str:
+    # 예: 020-26-01-900003-1 -> 0202601900003
+    parts = cmdt_nm_value.split("-")
+    if len(parts) >= 4:
+        pbac = "".join(parts[:4])
+    else:
+        pbac = cmdt_nm_value
+    return "".join(ch for ch in pbac if ch.isdigit())
+
 def main():
     # 저장 폴더 생성
     if not os.path.exists(TMP_PATH):
         os.makedirs(TMP_PATH)
 
     downloadCount = 0
-    pbacNo = 0      # 유니패스 데이터베이스 속성명
+    pbacNo = 0      # 유니패스 데이터베이스 속성명(파일명 prefix는 기존 0 유지)
+    pbacNoForDir = _extract_pbac_no(cmdtNm_value)
+    save_dir = os.path.join(TMP_PATH, pbacNoForDir)
+    os.makedirs(save_dir, exist_ok=True)
     cmdtLnNo = 1
     imageCount = 0
 
@@ -49,7 +61,7 @@ def main():
                     image_buffer = response.body()
                     
                     # 파일 생성
-                    file_path = os.path.join(TMP_PATH, file_name)
+                    file_path = os.path.join(save_dir, file_name)
 
                     # 이미지 파일 저장
                     with open(file_path, "wb") as f:
