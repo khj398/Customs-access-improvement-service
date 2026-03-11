@@ -79,8 +79,8 @@
 
 ### 2-5. auction_item_image 보강
 - 현재 테이블 유지 + 아래 컬럼 추가 권장
-  - `image_type` (THUMB/DETAIL/UNKNOWN)
-  - `source` (LIST_API/DETAIL_API/CRAWLER)
+  - `image_type` (THUMB/DETAIL/OTHER)
+  - `source_type` (LIST_BUSINESS/LIST_PERSONAL/UNIPASS_IMAGE)
   - `last_seen_at`
 
 ### 2-5-1. 수집기 3종 반영 체크 (Business/Personal/Image)
@@ -96,8 +96,8 @@
 3. 전자입찰/일반입찰 구분: `auction.elct_bid_eon`으로 **구분 가능**
 
 보강 권장(1차 DDL):
-- `auction`에 `collector_source`(BUSINESS/PERSONAL/UNKNOWN) 필드 추가 고려
-- `auction_item_image.source` 또는 `source_type` 값을 표준 enum으로 관리
+- `auction`에 `collector_source`(BUSINESS/PERSONAL/IMAGE) 필드 추가 고려
+- `auction_item_image.source_type` 값을 표준 enum으로 관리
   - 예: `UNIPASS_IMAGE`, `LIST_BUSINESS`, `LIST_PERSONAL`
 
 ### 2-6. 분류/검색 테이블 운영 보강
@@ -555,4 +555,3 @@ MVP는 단일 DB 테이블 큐 + 워커 1개부터 시작해도 충분합니다.
   3. rollback SQL(이전 명칭 복귀) 사전 준비
 
 즉, 현재 단계에서는 "기능 안정화 우선, 리네이밍은 점진 적용"이 가장 안전합니다.
-

@@ -36,7 +36,7 @@ class DataSource:
 DEFAULT_SOURCES = [
     DataSource("unipass_all_2b.json", "BUSINESS", "unipass_list_business", "LIST_BUSINESS"),
     DataSource("unipass_all_2c.json", "PERSONAL", "unipass_list_personal", "LIST_PERSONAL"),
-    DataSource("unipass_image.json", "IMAGE", "unipass_image", "UNIPASS_IMAGE_JSON"),
+    DataSource("unipass_image.json", "IMAGE", "unipass_image", "UNIPASS_IMAGE"),
 ]
 
 
@@ -86,6 +86,17 @@ def make_payload_hash(record: dict) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def infer_collector_from_path(path: str) -> str:
+    low = path.lower()
+    if "2b" in low or "business" in low:
+        return "BUSINESS"
+    if "2c" in low or "personal" in low:
+        return "PERSONAL"
+    if "image" in low:
+        return "IMAGE"
+    raise ValueError(f"collector_source를 추론할 수 없습니다: {path} (BUSINESS/PERSONAL/IMAGE 중 하나를 명시하세요)")
+
+
 def resolve_sources() -> list[DataSource]:
     """
     환경변수 UNIPASS_JSON_FILES로 입력 파일을 지정할 수 있다.
@@ -101,16 +112,17 @@ def resolve_sources() -> list[DataSource]:
                 continue
             parts = [x.strip() for x in chunk.split(":")]
             path = parts[0]
-            collector = parts[1].upper() if len(parts) >= 2 and parts[1] else "UNKNOWN"
+            collector = parts[1].upper() if len(parts) >= 2 and parts[1] else infer_collector_from_path(path)
             source_name = parts[2] if len(parts) >= 3 and parts[2] else f"unipass_{collector.lower()}"
-            out.append(DataSource(path, collector, source_name, f"LIST_{collector}", "json"))
+            image_source_type = "UNIPASS_IMAGE" if collector == "IMAGE" else f"LIST_{collector}"
+            out.append(DataSource(path, collector, source_name, image_source_type, "json"))
         return out
 
     sources = [s for s in DEFAULT_SOURCES if os.path.exists(s.path)]
 
     image_dir = os.getenv("UNIPASS_IMAGE_DIR", "downloaded_images").strip()
     if image_dir and os.path.isdir(image_dir):
-        sources.append(DataSource(image_dir, "IMAGE", "unipass_image_dir", "UNIPASS_IMAGE_FILE", "image_dir"))
+        sources.append(DataSource(image_dir, "IMAGE", "unipass_image_dir", "UNIPASS_IMAGE", "image_dir"))
 
     return sources
 
