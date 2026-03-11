@@ -4,7 +4,7 @@
 현재 저장소는 **수집(JSON) → ETL(MySQL) → Rule 기반 분류/토큰화**까지는 잘 구성되어 있습니다.
 다만 데모를 빠르게 완성하려면 아래 공백을 먼저 메꿔야 합니다.
 
-- 백엔드 API 서버 부재 (`backend/`는 README 상 예정 단계)
+- 백엔드 API가 최소 골격 수준이라, 검색/상세/필터 API 고도화 필요
 - OpenAI 기반 분류 파이프라인 부재 (현재는 rule 기반 중심)
 - 운영 기준(재처리, 실패 복구, 비용 제어, 평가 지표) 문서화 부족
 
@@ -15,8 +15,11 @@
 
 
 ## 1-1) 현재 수집에서 이미지를 가져오는가?
-`project/AWSLambda/unipass_list.py`는 목록 응답(`retrievePbacCmdt.do`)의 각 item에서 이미지 URL 패턴을 스캔해
-`image_urls` / `image_count`를 함께 저장합니다.
+현재 수집기는 `project/AWSLambda/UNIPASS_LIST_Business.py`,
+`project/AWSLambda/UNIPASS_LIST_Personal.py`, `project/AWSLambda/UNIPASS_Image.py`로 분리되어 있습니다.
+
+특히 이미지 전용 수집기(`UNIPASS_Image.py`)를 통해 이미지 URL/메타를 수집하고,
+목록 수집기(Business/Personal)는 공매/물품 메타를 수집합니다.
 
 다만 목록 응답에 이미지 관련 필드가 없으면 결과는 빈 배열이므로, 실사용에서는 아래 보강이 필요합니다.
 - 상세 API 호출(공매 상세/첨부) 추가 수집
@@ -28,8 +31,11 @@
 ## 2) 권장 아키텍처 (데모 우선)
 
 1. **수집 레이어**
-   - 기존 `project/AWSLambda/unipass_list.py` 유지
-   - 스케줄 실행 결과를 `unipass_all.json`으로 저장
+   - 기존 분리 수집기 3종 유지
+     - `project/AWSLambda/UNIPASS_LIST_Business.py`
+     - `project/AWSLambda/UNIPASS_LIST_Personal.py`
+     - `project/AWSLambda/UNIPASS_Image.py`
+   - 스케줄 실행 결과를 `unipass_all_2b.json`/`unipass_all_2c.json`(목록) + `unipass_image.json`(이미지 메타)로 저장
 
 2. **적재 레이어(ETL)**
    - 기존 `etl/load_unipass_to_mysql.py` 유지
