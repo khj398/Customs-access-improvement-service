@@ -13,13 +13,9 @@ HEADLESS = False
 cmdtNm_value = "020-26-01-900003-1"
 
 def _extract_pbac_no(cmdt_nm_value: str) -> str:
-    # 예: 020-26-01-900003-1 -> 0202601900003
-    parts = cmdt_nm_value.split("-")
-    if len(parts) >= 4:
-        pbac = "".join(parts[:4])
-    else:
-        pbac = cmdt_nm_value
-    return "".join(ch for ch in pbac if ch.isdigit())
+    # 예: 020-26-01-900003-1 -> 02026019000031
+    # 하이픈만 제거해 DB의 pbac_no 포맷(끝자리 구분코드 포함)과 맞춘다.
+    return "".join(ch for ch in cmdt_nm_value if ch.isdigit())
 
 def main():
     # 저장 폴더 생성
