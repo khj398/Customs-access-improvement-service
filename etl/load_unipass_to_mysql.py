@@ -13,15 +13,20 @@ import pymysql
 # =========================================================
 # 설정
 # =========================================================
-DB_CONFIG = {
-    "host": "127.0.0.1",
-    "user": "root",
-    "password": "password",  # ← 수정
-    "database": "customs_auction",
-    "charset": "utf8mb4",
-    "cursorclass": pymysql.cursors.DictCursor,
-    "autocommit": False,
-}
+def build_db_config() -> dict[str, Any]:
+    return {
+        "host": os.getenv("MYSQL_HOST", "127.0.0.1"),
+        "port": int(os.getenv("MYSQL_PORT", "3306")),
+        "user": os.getenv("MYSQL_USER", "root"),
+        "password": os.getenv("MYSQL_PASSWORD", "password"),
+        "database": os.getenv("MYSQL_DATABASE", "customs_auction"),
+        "charset": "utf8mb4",
+        "cursorclass": pymysql.cursors.DictCursor,
+        "autocommit": False,
+    }
+
+
+DB_CONFIG = build_db_config()
 
 
 @dataclass
@@ -84,6 +89,18 @@ def make_source_key(pbac_no: str, pbac_srno: str, cmdt_ln_no: str) -> str:
 def make_payload_hash(record: dict) -> str:
     canonical = json.dumps(record, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def ensure_cmdt_name(record: dict, pbac_no: str, pbac_srno: str, cmdt_ln_no: str) -> str:
+    cmdt_name = as_str(record.get("cmdtNm"))
+    if cmdt_name:
+        return cmdt_name
+
+    fallback = as_str(record.get("atntCmdtNm"))
+    if fallback:
+        return f"미기재물품({fallback})"
+
+    return f"미기재물품({pbac_no}-{pbac_srno}-{cmdt_ln_no})"
 
 
 def infer_collector_from_path(path: str) -> str:
@@ -565,7 +582,7 @@ def run_source(conn, source: DataSource) -> tuple[int, int, int]:
                         pbac_no,
                         pbac_srno,
                         cmdt_ln_no,
-                        as_str(r.get("cmdtNm")),
+                        ensure_cmdt_name(r, pbac_no, pbac_srno, cmdt_ln_no),
                         as_int(r.get("cmdtQty")),
                         qty_unit,
                         as_float(r.get("cmdtWght")),
@@ -650,7 +667,12 @@ def main():
             "입력 소스가 없습니다. 기본 JSON(unipass_all_2b.json / unipass_all_2c.json / unipass_image.json) 또는 downloaded_images/<pbac_no>/... (단일 폴더는 파일명 공매번호 접두 또는 UNIPASS_IMAGE_PBAC_NO), UNIPASS_JSON_FILES 환경변수를 확인하세요."
         )
 
-    conn = pymysql.connect(**DB_CONFIG)
+    try:
+        conn = pymysql.connect(**DB_CONFIG)
+    except pymysql.err.OperationalError as e:
+        raise RuntimeError(
+            "DB 연결 실패: MYSQL_HOST/MYSQL_PORT/MYSQL_USER/MYSQL_PASSWORD/MYSQL_DATABASE 환경변수 또는 DB 계정 권한을 확인하세요."
+        ) from e
     total_auctions = 0
     total_items = 0
     total_errors = 0
