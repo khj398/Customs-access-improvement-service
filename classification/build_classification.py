@@ -653,12 +653,16 @@ class OpenAIClassifier:
             return None
 
         path = parsed.get("category_path") or []
+<<<<<<< codex/create-new-branch-classification-bkq3sb
         raw_confidence = parsed.get("confidence", 0.0)
         try:
             confidence = float(raw_confidence or 0.0)
         except (TypeError, ValueError):
             print(f"⚠️ OpenAI classification failed: invalid confidence={raw_confidence!r}")
             return None
+=======
+        confidence = float(parsed.get("confidence", 0.0) or 0.0)
+>>>>>>> main
         rationale = str(parsed.get("rationale", "openai classification"))
 
         if not isinstance(path, list) or not path:
