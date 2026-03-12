@@ -584,6 +584,7 @@ class OpenAIClassifier:
         self.model_name = model_name
         self.resolver = resolver
         self.client = None
+        self.client_mode: Optional[str] = None
         self.init_error: Optional[str] = None
         self.leaf_paths = resolver.get_leaf_paths()
 
@@ -596,17 +597,37 @@ class OpenAIClassifier:
             from openai import OpenAI
 
             self.client = OpenAI(api_key=api_key)
-            print(f"ℹ️ OpenAI fallback enabled (model={self.model_name})")
-        except ImportError:
-            self.init_error = "No module named 'openai'"
-            print("⚠️ OpenAI client init failed: No module named 'openai'")
-            print("   Install dependency with one of the commands below and rerun.")
-            print(f"   - {sys.executable} -m pip install openai")
-            print("   - pip install openai")
-            print("   - conda install -c conda-forge openai")
-            print("   Verify install target with:")
-            print(f"   - {sys.executable} -m pip show openai")
-            self.client = None
+            self.client_mode = "v1"
+            print(f"ℹ️ OpenAI fallback enabled (model={self.model_name}, sdk=v1)")
+            return
+        except ImportError as e:
+            if "No module named 'openai'" in str(e):
+                self.init_error = "No module named 'openai'"
+                print("⚠️ OpenAI client init failed: No module named 'openai'")
+                print("   Install dependency with one of the commands below and rerun.")
+                print(f"   - {sys.executable} -m pip install openai")
+                print("   - pip install openai")
+                print("   - conda install -c conda-forge openai")
+                print("   Verify install target with:")
+                print(f"   - {sys.executable} -m pip show openai")
+                self.client = None
+                return
+
+            # openai 패키지는 있으나 구버전(0.x)이라 OpenAI 심볼이 없는 경우
+            try:
+                import openai as legacy_openai
+
+                legacy_openai.api_key = api_key
+                self.client = legacy_openai
+                self.client_mode = "legacy"
+                print(f"ℹ️ OpenAI fallback enabled (model={self.model_name}, sdk=legacy)")
+                print("   Tip: 최신 SDK 사용 권장 -> python -m pip install -U openai")
+                return
+            except Exception as legacy_e:
+                self.init_error = f"{e}; legacy fallback failed: {legacy_e}"
+                print(f"⚠️ OpenAI client init failed: {self.init_error}")
+                self.client = None
+                return
         except Exception as e:
             self.init_error = str(e)
             print(f"⚠️ OpenAI client init failed: {e}")
@@ -615,6 +636,27 @@ class OpenAIClassifier:
     @property
     def enabled(self) -> bool:
         return self.client is not None
+
+    def _create_completion(self, sys_prompt: str, user_prompt: dict):
+        if self.client_mode == "legacy":
+            return self.client.ChatCompletion.create(
+                model=self.model_name,
+                temperature=0,
+                messages=[
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": json.dumps(user_prompt, ensure_ascii=False)},
+                ],
+            )
+
+        return self.client.chat.completions.create(
+            model=self.model_name,
+            temperature=0,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": json.dumps(user_prompt, ensure_ascii=False)},
+            ],
+        )
 
     def classify(self, cmdt_nm: str, raw_tokens: Set[str]) -> Optional[LLMClassification]:
         if not self.enabled:
@@ -644,15 +686,7 @@ class OpenAIClassifier:
         }
 
         try:
-            resp = self.client.chat.completions.create(
-                model=self.model_name,
-                temperature=0,
-                response_format={"type": "json_object"},
-                messages=[
-                    {"role": "system", "content": sys_prompt},
-                    {"role": "user", "content": json.dumps(user_prompt, ensure_ascii=False)},
-                ],
-            )
+            resp = self._create_completion(sys_prompt, user_prompt)
             content = resp.choices[0].message.content or "{}"
             parsed = json.loads(content)
         except Exception as e:
@@ -666,7 +700,6 @@ class OpenAIClassifier:
         except (TypeError, ValueError):
             print(f"⚠️ OpenAI classification failed: invalid confidence={raw_confidence!r}")
             return None
-
         rationale = str(parsed.get("rationale", "openai classification"))
 
         if not isinstance(path, list) or not path:

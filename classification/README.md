@@ -120,6 +120,13 @@ python -m pip show openai
 `--use-openai`를 줬는데도 OpenAI 초기화가 실패하면 기본 동작은 rule/fallback으로 계속 진행한다.
 OpenAI 사용이 필수라면 `--strict-openai` 옵션을 같이 사용해 초기화 실패 시 즉시 종료하도록 설정한다.
 
+`openai` 패키지는 설치되어 있는데도 `from openai import OpenAI` 오류가 나면 구버전(0.x)일 수 있다.
+스크립트는 구버전 SDK도 자동 호환 시도하지만, 가능하면 최신 버전으로 업그레이드하는 것을 권장한다.
+
+```bash
+python -m pip install -U openai
+```
+
 ### 4.4 결과 저장 테이블
 item_classification : 품목(라인)별 분류 결과 저장(UPSERT)
 item_search_token : 검색 토큰 저장(UPSERT)
