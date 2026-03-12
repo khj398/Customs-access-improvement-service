@@ -69,6 +69,28 @@
 - `auction_item` 테이블에 ETL로 데이터가 적재되어 있어야 한다.  
   (`etl/load_unipass_to_mysql.py`)
 
+### 4.1.1 DB 접속 설정(중요)
+`build_classification.py`는 기본값으로 `127.0.0.1:3306`, `root`, `customs_auction`에 접속한다.
+로컬 환경이 다르면 실행 전에 환경변수로 DB 접속 정보를 지정한다.
+
+```bash
+# macOS/Linux bash
+export DB_HOST=127.0.0.1
+export DB_PORT=3306
+export DB_USER=root
+export DB_PASSWORD=<YOUR_DB_PASSWORD>
+export DB_NAME=customs_auction
+
+# Windows PowerShell
+$env:DB_HOST="127.0.0.1"
+$env:DB_PORT="3306"
+$env:DB_USER="root"
+$env:DB_PASSWORD="<YOUR_DB_PASSWORD>"
+$env:DB_NAME="customs_auction"
+```
+
+`Access denied for user 'root'@'localhost' (1045)`가 나오면 비밀번호뿐 아니라 계정의 허용 호스트(`localhost` vs `127.0.0.1`) 권한도 확인해야 한다.
+
 ### 4.2 실행
 분류 + 토큰 생성은 아래 스크립트 하나로 수행된다.
 

@@ -13,10 +13,11 @@ import pymysql
 # DB 설정 (환경에 맞게 수정)
 # =========================================================
 DB_CONFIG = {
-    "host": "127.0.0.1",
-    "user": "root",
-    "password": "password",      # <- 수정
-    "database": "customs_auction",
+    "host": os.getenv("DB_HOST", "127.0.0.1"),
+    "port": int(os.getenv("DB_PORT", "3306")),
+    "user": os.getenv("DB_USER", "root"),
+    "password": os.getenv("DB_PASSWORD", "password"),      # <- 수정
+    "database": os.getenv("DB_NAME", "customs_auction"),
     "charset": "utf8mb4",
     "cursorclass": pymysql.cursors.DictCursor,
     "autocommit": False,
@@ -733,7 +734,24 @@ def main():
     )
     args = parser.parse_args()
 
-    conn = pymysql.connect(**DB_CONFIG)
+    try:
+        conn = pymysql.connect(**DB_CONFIG)
+    except pymysql.err.OperationalError as e:
+        if getattr(e, "args", None) and len(e.args) >= 2 and e.args[0] == 1045:
+            host = DB_CONFIG.get("host")
+            port = DB_CONFIG.get("port")
+            user = DB_CONFIG.get("user")
+            db_name = DB_CONFIG.get("database")
+            raise RuntimeError(
+                "MySQL 인증 실패(1045): DB 계정/호스트 권한을 확인하세요.\n"
+                f"- 현재 설정: user={user}, host={host}, port={port}, db={db_name}\n"
+                "- 실행 전 환경변수로 지정 가능: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME\n"
+                "- Windows PowerShell 예시:\n"
+                "  $env:DB_HOST='127.0.0.1'; $env:DB_PORT='3306'; $env:DB_USER='root'; $env:DB_PASSWORD='<비밀번호>'; $env:DB_NAME='customs_auction'\n"
+                "- MySQL에서 root@localhost만 있고 root@127.0.0.1 권한이 없으면 실패할 수 있습니다. 이 경우 DB_HOST를 localhost로 바꿔 재시도하세요."
+            ) from e
+        raise
+
     rules = build_rules()
 
     processed = 0
