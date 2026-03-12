@@ -584,10 +584,12 @@ class OpenAIClassifier:
         self.model_name = model_name
         self.resolver = resolver
         self.client = None
+        self.init_error: Optional[str] = None
         self.leaf_paths = resolver.get_leaf_paths()
 
         api_key = os.getenv("OPENAI_API_KEY", "").strip()
         if not api_key:
+            self.init_error = "OPENAI_API_KEY is not set"
             return
 
         try:
@@ -596,12 +598,17 @@ class OpenAIClassifier:
             self.client = OpenAI(api_key=api_key)
             print(f"ℹ️ OpenAI fallback enabled (model={self.model_name})")
         except ImportError:
+            self.init_error = "No module named 'openai'"
             print("⚠️ OpenAI client init failed: No module named 'openai'")
             print("   Install dependency with one of the commands below and rerun.")
             print(f"   - {sys.executable} -m pip install openai")
             print("   - pip install openai")
+            print("   - conda install -c conda-forge openai")
+            print("   Verify install target with:")
+            print(f"   - {sys.executable} -m pip show openai")
             self.client = None
         except Exception as e:
+            self.init_error = str(e)
             print(f"⚠️ OpenAI client init failed: {e}")
             self.client = None
 
@@ -653,16 +660,13 @@ class OpenAIClassifier:
             return None
 
         path = parsed.get("category_path") or []
-<<<<<<< codex/create-new-branch-classification-bkq3sb
         raw_confidence = parsed.get("confidence", 0.0)
         try:
             confidence = float(raw_confidence or 0.0)
         except (TypeError, ValueError):
             print(f"⚠️ OpenAI classification failed: invalid confidence={raw_confidence!r}")
             return None
-=======
-        confidence = float(parsed.get("confidence", 0.0) or 0.0)
->>>>>>> main
+
         rationale = str(parsed.get("rationale", "openai classification"))
 
         if not isinstance(path, list) or not path:
@@ -689,6 +693,11 @@ def main():
     parser.add_argument("--model-ver", type=str, default="rule-v1", help="Model version tag")
     parser.add_argument("--use-openai", action="store_true", help="Enable OpenAI fallback classifier")
     parser.add_argument("--openai-model", type=str, default="gpt-4o-mini", help="OpenAI model name")
+    parser.add_argument(
+        "--strict-openai",
+        action="store_true",
+        help="Fail fast when --use-openai is set but OpenAI client cannot be initialized",
+    )
     args = parser.parse_args()
 
     conn = pymysql.connect(**DB_CONFIG)
@@ -715,6 +724,14 @@ def main():
                 )
             resolver = CategoryResolver(nodes)
             llm_classifier = OpenAIClassifier(args.openai_model, resolver) if args.use_openai else None
+            if args.use_openai and llm_classifier and not llm_classifier.enabled:
+                msg = (
+                    f"OpenAI fallback requested but unavailable: {llm_classifier.init_error or 'unknown reason'}"
+                )
+                if args.strict_openai:
+                    raise RuntimeError(msg)
+                print(f"⚠️ {msg}")
+                print("   Continuing with rule/fallback only. Use --strict-openai to fail fast.")
 
             # Resolve fallback category: 기타 > 미분류 > 기타
             fallback_id = resolver.resolve_path(["기타", "미분류", "기타"])

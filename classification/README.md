@@ -84,6 +84,9 @@ python classification/build_classification.py --dry-run --limit 20
 export OPENAI_API_KEY="<YOUR_API_KEY>"
 python classification/build_classification.py --use-openai --openai-model gpt-4o-mini
 
+# OpenAI 반드시 사용되어야 할 때(초기화 실패 시 즉시 종료)
+python classification/build_classification.py --use-openai --openai-model gpt-4o-mini --strict-openai
+
 # OpenAI fallback 분류 활성화 (Windows PowerShell)
 $env:OPENAI_API_KEY="<YOUR_API_KEY>"
 python classification/build_classification.py --use-openai --openai-model gpt-4o-mini
@@ -102,9 +105,20 @@ python -m pip install openai
 
 # 또는 환경에 따라
 pip install openai
+
+# Conda 환경이라면
+conda install -c conda-forge openai
 ```
 
 가상환경(venv/conda)을 사용 중이라면, `build_classification.py`를 실행하는 **동일한 인터프리터**에 설치해야 한다.
+아래로 설치 위치를 점검할 수 있다.
+
+```bash
+python -m pip show openai
+```
+
+`--use-openai`를 줬는데도 OpenAI 초기화가 실패하면 기본 동작은 rule/fallback으로 계속 진행한다.
+OpenAI 사용이 필수라면 `--strict-openai` 옵션을 같이 사용해 초기화 실패 시 즉시 종료하도록 설정한다.
 
 ### 4.4 결과 저장 테이블
 item_classification : 품목(라인)별 분류 결과 저장(UPSERT)
@@ -160,4 +174,3 @@ DB 결과 검증은 db/feedback.sql 사용을 권장한다.
 분류 성공/미분류(fallback) 개수 확인
 fallback 항목의 RAW 토큰 TOP 분석 → 룰/사전 확장 근거
 특정 검색어(와인/술/주류 등) 토큰 존재 여부 확인
-
