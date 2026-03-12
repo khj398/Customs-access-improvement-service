@@ -1,5 +1,8 @@
 import argparse
+import json
+import os
 import re
+import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -125,6 +128,18 @@ class CategoryResolver:
                 break
             cur = self.nodes.get(cur.parent_id)
         return names  # leaf first
+
+    def get_leaf_paths(self) -> List[List[str]]:
+        """활성 카테고리 중 leaf 노드들의 root->leaf 경로를 반환."""
+        parent_ids = {node.parent_id for node in self.nodes.values() if node.parent_id is not None}
+        leaf_ids = sorted(cid for cid in self.nodes.keys() if cid not in parent_ids)
+        paths: List[List[str]] = []
+        for leaf_id in leaf_ids:
+            names_leaf_to_root = self.get_ancestors_names(leaf_id)
+            if not names_leaf_to_root:
+                continue
+            paths.append(list(reversed(names_leaf_to_root)))
+        return paths
 
 
 # =========================================================
@@ -489,8 +504,6 @@ def synonym_tokens_from_text(norm_text: str, raw_tokens: Set[str], dict_entries:
     return out
 
 
-from typing import List, Tuple
-
 # =========================================================
 # CATEGORY 토큰 (분류 결과 기반)  ✅ A안: token_type은 CATEGORY만 사용
 # - leaf->root 개별 토큰 + root->leaf 경로 토큰( ' > ' 포함 )을 CATEGORY로 저장
@@ -555,6 +568,120 @@ def category_tokens(resolver: "CategoryResolver", leaf_category_id: int) -> List
 
 CATEGORY_STOPWORDS = {"기타", "미분류"}
 
+
+# =========================================================
+# OpenAI 분류기 (rule fallback 보강)
+# =========================================================
+@dataclass
+class LLMClassification:
+    category_path: List[str]
+    confidence: float
+    rationale: str
+
+
+class OpenAIClassifier:
+    def __init__(self, model_name: str, resolver: CategoryResolver):
+        self.model_name = model_name
+        self.resolver = resolver
+        self.client = None
+        self.init_error: Optional[str] = None
+        self.leaf_paths = resolver.get_leaf_paths()
+
+        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        if not api_key:
+            self.init_error = "OPENAI_API_KEY is not set"
+            return
+
+        try:
+            from openai import OpenAI
+
+            self.client = OpenAI(api_key=api_key)
+            print(f"ℹ️ OpenAI fallback enabled (model={self.model_name})")
+        except ImportError:
+            self.init_error = "No module named 'openai'"
+            print("⚠️ OpenAI client init failed: No module named 'openai'")
+            print("   Install dependency with one of the commands below and rerun.")
+            print(f"   - {sys.executable} -m pip install openai")
+            print("   - pip install openai")
+            print("   - conda install -c conda-forge openai")
+            print("   Verify install target with:")
+            print(f"   - {sys.executable} -m pip show openai")
+            self.client = None
+        except Exception as e:
+            self.init_error = str(e)
+            print(f"⚠️ OpenAI client init failed: {e}")
+            self.client = None
+
+    @property
+    def enabled(self) -> bool:
+        return self.client is not None
+
+    def classify(self, cmdt_nm: str, raw_tokens: Set[str]) -> Optional[LLMClassification]:
+        if not self.enabled:
+            return None
+
+        allowed_paths = [" > ".join(p) for p in self.leaf_paths if p]
+        if not allowed_paths:
+            return None
+
+        sys_prompt = (
+            "당신은 공매 물품명 분류기다. 주어진 물품명을 허용 카테고리 목록 중 정확히 하나로 분류하라. "
+            "반드시 JSON으로만 응답하라."
+        )
+        user_prompt = {
+            "item_name": cmdt_nm,
+            "raw_tokens": sorted(raw_tokens),
+            "allowed_category_paths": allowed_paths,
+            "output_schema": {
+                "category_path": ["대분류", "중분류", "소분류"],
+                "confidence": "0~1 실수",
+                "rationale": "짧은 근거",
+            },
+            "rules": [
+                "category_path는 반드시 allowed_category_paths 중 하나여야 함",
+                "확신이 낮으면 confidence를 0.55~0.70 범위로 보수적으로 반환",
+            ],
+        }
+
+        try:
+            resp = self.client.chat.completions.create(
+                model=self.model_name,
+                temperature=0,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": json.dumps(user_prompt, ensure_ascii=False)},
+                ],
+            )
+            content = resp.choices[0].message.content or "{}"
+            parsed = json.loads(content)
+        except Exception as e:
+            print(f"⚠️ OpenAI classification failed: {e}")
+            return None
+
+        path = parsed.get("category_path") or []
+        raw_confidence = parsed.get("confidence", 0.0)
+        try:
+            confidence = float(raw_confidence or 0.0)
+        except (TypeError, ValueError):
+            print(f"⚠️ OpenAI classification failed: invalid confidence={raw_confidence!r}")
+            return None
+        rationale = str(parsed.get("rationale", "openai classification"))
+
+        if not isinstance(path, list) or not path:
+            return None
+
+        normalized = [str(x).strip() for x in path if str(x).strip()]
+        if " > ".join(normalized) not in allowed_paths:
+            return None
+
+        confidence = max(0.0, min(0.99, confidence))
+        return LLMClassification(
+            category_path=normalized,
+            confidence=confidence,
+            rationale=rationale[:500],
+        )
+
 # =========================================================
 # 메인
 # =========================================================
@@ -563,6 +690,13 @@ def main():
     parser.add_argument("--limit", type=int, default=0, help="Process only N items (0=all)")
     parser.add_argument("--dry-run", action="store_true", help="Do not write to DB")
     parser.add_argument("--model-ver", type=str, default="rule-v1", help="Model version tag")
+    parser.add_argument("--use-openai", action="store_true", help="Enable OpenAI fallback classifier")
+    parser.add_argument("--openai-model", type=str, default="gpt-4o-mini", help="OpenAI model name")
+    parser.add_argument(
+        "--strict-openai",
+        action="store_true",
+        help="Fail fast when --use-openai is set but OpenAI client cannot be initialized",
+    )
     args = parser.parse_args()
 
     conn = pymysql.connect(**DB_CONFIG)
@@ -570,6 +704,7 @@ def main():
 
     processed = 0
     classified = 0
+    classified_openai = 0
     fallbacked = 0
     token_written = 0
 
@@ -587,6 +722,15 @@ def main():
                     name_ko=r["name_ko"],
                 )
             resolver = CategoryResolver(nodes)
+            llm_classifier = OpenAIClassifier(args.openai_model, resolver) if args.use_openai else None
+            if args.use_openai and llm_classifier and not llm_classifier.enabled:
+                msg = (
+                    f"OpenAI fallback requested but unavailable: {llm_classifier.init_error or 'unknown reason'}"
+                )
+                if args.strict_openai:
+                    raise RuntimeError(msg)
+                print(f"⚠️ {msg}")
+                print("   Continuing with rule/fallback only. Use --strict-openai to fail fast.")
 
             # Resolve fallback category: 기타 > 미분류 > 기타
             fallback_id = resolver.resolve_path(["기타", "미분류", "기타"])
@@ -614,6 +758,8 @@ def main():
 
                 # --- classify
                 m = match_rule(raw_tokens, rules)
+                model_name = "rule"
+                model_ver = args.model_ver
                 if m:
                     rule, matched_keywords = m
                     cid = resolver.resolve_path(rule.category_path)
@@ -629,10 +775,25 @@ def main():
                         rationale = f"[{rule.name}] {rule.rationale_hint} | matched={sorted(matched_keywords)}"
                         classified += 1
                 else:
-                    cid = fallback_id
-                    conf = 0.55
-                    rationale = "[fallback] no rule matched"
-                    fallbacked += 1
+                    llm_result = llm_classifier.classify(cmdt_nm, raw_tokens) if llm_classifier else None
+                    if llm_result:
+                        cid = resolver.resolve_path(llm_result.category_path)
+                        if cid is not None:
+                            conf = max(0.55, llm_result.confidence)
+                            rationale = f"[openai] {llm_result.rationale} | path={' > '.join(llm_result.category_path)}"
+                            model_name = "openai"
+                            model_ver = args.openai_model
+                            classified_openai += 1
+                        else:
+                            cid = fallback_id
+                            conf = 0.55
+                            rationale = "[fallback] openai path not found in category tree"
+                            fallbacked += 1
+                    else:
+                        cid = fallback_id
+                        conf = 0.55
+                        rationale = "[fallback] no rule matched"
+                        fallbacked += 1
 
                 # --- write classification
                 if not args.dry_run:
@@ -643,8 +804,8 @@ def main():
                             pbac_srno,
                             cmdt_ln_no,
                             cid,
-                            "rule",
-                            args.model_ver,
+                            model_name,
+                            model_ver,
                             conf,
                             rationale,
                         ),
@@ -711,6 +872,7 @@ def main():
         print("✅ build_classification done")
         print(f"- processed items: {processed}")
         print(f"- classified by rule: {classified}")
+        print(f"- classified by openai: {classified_openai}")
         print(f"- fallback: {fallbacked}")
         print(f"- tokens upserted: {token_written}")
         print("Tip: rerun is safe (UPSERT).")
