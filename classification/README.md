@@ -53,7 +53,7 @@
    - 대소문자 통일, 특수문자 제거, 토큰화(Tokenization)
 3. **분류 로직 적용**
    - Rule-based 분류 (키워드 기반)
-   - (확장 예정) AI/NLP 기반 분류
+   - OpenAI fallback 분류 (룰 미매칭 시 선택적으로 적용)
 4. **분류 결과 저장**
    - `category_id`, `model_name`, `model_ver`, `confidence`, `rationale`
 5. **검색 토큰 생성**
@@ -73,14 +73,40 @@
 분류 + 토큰 생성은 아래 스크립트 하나로 수행된다.
 
 ```bash
-pip install pymysql
+pip install pymysql openai
 python classification/build_classification.py
 
-옵션
+# 옵션
 python classification/build_classification.py --limit 20
 python classification/build_classification.py --dry-run --limit 20
 
-### 4.3 결과 저장 테이블
+# OpenAI fallback 분류 활성화 (macOS/Linux bash)
+export OPENAI_API_KEY="<YOUR_API_KEY>"
+python classification/build_classification.py --use-openai --openai-model gpt-4o-mini
+
+# OpenAI fallback 분류 활성화 (Windows PowerShell)
+$env:OPENAI_API_KEY="<YOUR_API_KEY>"
+python classification/build_classification.py --use-openai --openai-model gpt-4o-mini
+
+# OpenAI fallback 분류 활성화 (Windows CMD)
+set OPENAI_API_KEY=<YOUR_API_KEY>
+python classification/build_classification.py --use-openai --openai-model gpt-4o-mini
+```
+
+### 4.3 OpenAI 오류 해결 (자주 발생)
+`⚠️ OpenAI client init failed: No module named 'openai'` 오류는 OpenAI Python SDK가 설치되지 않았다는 의미다.
+
+```bash
+# 현재 실행 중인 파이썬에 설치 (권장)
+python -m pip install openai
+
+# 또는 환경에 따라
+pip install openai
+```
+
+가상환경(venv/conda)을 사용 중이라면, `build_classification.py`를 실행하는 **동일한 인터프리터**에 설치해야 한다.
+
+### 4.4 결과 저장 테이블
 item_classification : 품목(라인)별 분류 결과 저장(UPSERT)
 item_search_token : 검색 토큰 저장(UPSERT)
 RAW: 원문(영문) 토큰
