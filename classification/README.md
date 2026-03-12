@@ -53,7 +53,7 @@
    - 대소문자 통일, 특수문자 제거, 토큰화(Tokenization)
 3. **분류 로직 적용**
    - Rule-based 분류 (키워드 기반)
-   - (확장 예정) AI/NLP 기반 분류
+   - OpenAI fallback 분류 (룰 미매칭 시 선택적으로 적용)
 4. **분류 결과 저장**
    - `category_id`, `model_name`, `model_ver`, `confidence`, `rationale`
 5. **검색 토큰 생성**
@@ -73,14 +73,61 @@
 분류 + 토큰 생성은 아래 스크립트 하나로 수행된다.
 
 ```bash
-pip install pymysql
+pip install pymysql openai
 python classification/build_classification.py
 
-옵션
+# 옵션
 python classification/build_classification.py --limit 20
 python classification/build_classification.py --dry-run --limit 20
 
-### 4.3 결과 저장 테이블
+# OpenAI fallback 분류 활성화 (macOS/Linux bash)
+export OPENAI_API_KEY="<YOUR_API_KEY>"
+python classification/build_classification.py --use-openai --openai-model gpt-4o-mini
+
+# OpenAI 반드시 사용되어야 할 때(초기화 실패 시 즉시 종료)
+python classification/build_classification.py --use-openai --openai-model gpt-4o-mini --strict-openai
+
+# OpenAI fallback 분류 활성화 (Windows PowerShell)
+$env:OPENAI_API_KEY="<YOUR_API_KEY>"
+python classification/build_classification.py --use-openai --openai-model gpt-4o-mini
+
+# OpenAI fallback 분류 활성화 (Windows CMD)
+set OPENAI_API_KEY=<YOUR_API_KEY>
+python classification/build_classification.py --use-openai --openai-model gpt-4o-mini
+```
+
+### 4.3 OpenAI 오류 해결 (자주 발생)
+`⚠️ OpenAI client init failed: No module named 'openai'` 오류는 OpenAI Python SDK가 설치되지 않았다는 의미다.
+
+```bash
+# 현재 실행 중인 파이썬에 설치 (권장)
+python -m pip install openai
+
+# 또는 환경에 따라
+pip install openai
+
+# Conda 환경이라면
+conda install -c conda-forge openai
+```
+
+가상환경(venv/conda)을 사용 중이라면, `build_classification.py`를 실행하는 **동일한 인터프리터**에 설치해야 한다.
+아래로 설치 위치를 점검할 수 있다.
+
+```bash
+python -m pip show openai
+```
+
+`--use-openai`를 줬는데도 OpenAI 초기화가 실패하면 기본 동작은 rule/fallback으로 계속 진행한다.
+OpenAI 사용이 필수라면 `--strict-openai` 옵션을 같이 사용해 초기화 실패 시 즉시 종료하도록 설정한다.
+
+`openai` 패키지는 설치되어 있는데도 `from openai import OpenAI` 오류가 나면 구버전(0.x)일 수 있다.
+스크립트는 구버전 SDK도 자동 호환 시도하지만, 가능하면 최신 버전으로 업그레이드하는 것을 권장한다.
+
+```bash
+python -m pip install -U openai
+```
+
+### 4.4 결과 저장 테이블
 item_classification : 품목(라인)별 분류 결과 저장(UPSERT)
 item_search_token : 검색 토큰 저장(UPSERT)
 RAW: 원문(영문) 토큰
@@ -134,4 +181,3 @@ DB 결과 검증은 db/feedback.sql 사용을 권장한다.
 분류 성공/미분류(fallback) 개수 확인
 fallback 항목의 RAW 토큰 TOP 분석 → 룰/사전 확장 근거
 특정 검색어(와인/술/주류 등) 토큰 존재 여부 확인
-
