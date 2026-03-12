@@ -80,12 +80,33 @@ python classification/build_classification.py
 python classification/build_classification.py --limit 20
 python classification/build_classification.py --dry-run --limit 20
 
-# OpenAI fallback 분류 활성화
+# OpenAI fallback 분류 활성화 (macOS/Linux bash)
 export OPENAI_API_KEY="<YOUR_API_KEY>"
+python classification/build_classification.py --use-openai --openai-model gpt-4o-mini
+
+# OpenAI fallback 분류 활성화 (Windows PowerShell)
+$env:OPENAI_API_KEY="<YOUR_API_KEY>"
+python classification/build_classification.py --use-openai --openai-model gpt-4o-mini
+
+# OpenAI fallback 분류 활성화 (Windows CMD)
+set OPENAI_API_KEY=<YOUR_API_KEY>
 python classification/build_classification.py --use-openai --openai-model gpt-4o-mini
 ```
 
-### 4.3 결과 저장 테이블
+### 4.3 OpenAI 오류 해결 (자주 발생)
+`⚠️ OpenAI client init failed: No module named 'openai'` 오류는 OpenAI Python SDK가 설치되지 않았다는 의미다.
+
+```bash
+# 현재 실행 중인 파이썬에 설치 (권장)
+python -m pip install openai
+
+# 또는 환경에 따라
+pip install openai
+```
+
+가상환경(venv/conda)을 사용 중이라면, `build_classification.py`를 실행하는 **동일한 인터프리터**에 설치해야 한다.
+
+### 4.4 결과 저장 테이블
 item_classification : 품목(라인)별 분류 결과 저장(UPSERT)
 item_search_token : 검색 토큰 저장(UPSERT)
 RAW: 원문(영문) 토큰

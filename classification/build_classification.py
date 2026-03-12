@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import re
+import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -593,6 +594,13 @@ class OpenAIClassifier:
             from openai import OpenAI
 
             self.client = OpenAI(api_key=api_key)
+            print(f"ℹ️ OpenAI fallback enabled (model={self.model_name})")
+        except ImportError:
+            print("⚠️ OpenAI client init failed: No module named 'openai'")
+            print("   Install dependency with one of the commands below and rerun.")
+            print(f"   - {sys.executable} -m pip install openai")
+            print("   - pip install openai")
+            self.client = None
         except Exception as e:
             print(f"⚠️ OpenAI client init failed: {e}")
             self.client = None
