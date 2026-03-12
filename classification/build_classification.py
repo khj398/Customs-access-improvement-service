@@ -666,6 +666,7 @@ class OpenAIClassifier:
         except (TypeError, ValueError):
             print(f"⚠️ OpenAI classification failed: invalid confidence={raw_confidence!r}")
             return None
+
         rationale = str(parsed.get("rationale", "openai classification"))
 
         if not isinstance(path, list) or not path:
