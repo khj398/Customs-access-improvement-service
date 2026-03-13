@@ -587,6 +587,7 @@ class OpenAIClassifier:
         self.client = None
         self.client_mode: Optional[str] = None
         self.init_error: Optional[str] = None
+        self.disabled_reason: Optional[str] = None
         self.leaf_paths = resolver.get_leaf_paths()
 
         api_key = os.getenv("OPENAI_API_KEY", "").strip()
@@ -659,6 +660,22 @@ class OpenAIClassifier:
             ],
         )
 
+    def _disable_on_quota_error(self, err: Exception) -> bool:
+        text = str(err).lower()
+        is_quota = (
+            "insufficient_quota" in text
+            or "exceeded your current quota" in text
+            or "billing" in text and "quota" in text
+        )
+        if not is_quota:
+            return False
+
+        self.client = None
+        self.disabled_reason = "insufficient_quota"
+        print("⚠️ OpenAI disabled for remaining items: insufficient_quota")
+        print("   Check OpenAI billing/usage and rerun after quota is available.")
+        return True
+
     def classify(self, cmdt_nm: str, raw_tokens: Set[str]) -> Optional[LLMClassification]:
         if not self.enabled:
             return None
@@ -691,6 +708,8 @@ class OpenAIClassifier:
             content = resp.choices[0].message.content or "{}"
             parsed = json.loads(content)
         except Exception as e:
+            if self._disable_on_quota_error(e):
+                return None
             print(f"⚠️ OpenAI classification failed: {e}")
             return None
 
