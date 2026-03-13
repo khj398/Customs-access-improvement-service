@@ -292,6 +292,63 @@ ORDER BY
 
 -- =====================================================================================
 
+
+-- =====================================================================================
+-- 4) 검토용 VIEW (처음 1회 생성 후, SELECT만 반복)
+--    - DB/ERD에 익숙하지 않아도 한 화면으로 보기 쉽게 구성
+-- =====================================================================================
+DROP VIEW IF EXISTS vw_item_classification_review;
+
+CREATE VIEW vw_item_classification_review AS
+SELECT
+  ai.pbac_no,
+  ai.pbac_srno,
+  ai.cmdt_ln_no,
+  ai.cmdt_nm,
+  ic.model_name,
+  ic.model_ver,
+  ic.confidence,
+  ic.rationale,
+  c1.name_ko AS category_lv1,
+  c2.name_ko AS category_lv2,
+  c3.name_ko AS category_leaf,
+  MAX(CASE WHEN t.token_type='CATEGORY' AND t.token LIKE '%>%' THEN t.token END) AS category_path_token,
+  SUBSTRING_INDEX(
+    GROUP_CONCAT(DISTINCT CASE WHEN t.token_type='SYN' THEN t.token END ORDER BY t.token SEPARATOR ', '),
+    ', ',
+    20
+  ) AS syn_tokens_sample,
+  ic.updated_at
+FROM auction_item ai
+LEFT JOIN item_classification ic
+  ON ic.pbac_no=ai.pbac_no AND ic.pbac_srno=ai.pbac_srno AND ic.cmdt_ln_no=ai.cmdt_ln_no
+LEFT JOIN category c3 ON c3.category_id = ic.category_id
+LEFT JOIN category c2 ON c2.category_id = c3.parent_id
+LEFT JOIN category c1 ON c1.category_id = c2.parent_id
+LEFT JOIN item_search_token t
+  ON t.pbac_no=ai.pbac_no AND t.pbac_srno=ai.pbac_srno AND t.cmdt_ln_no=ai.cmdt_ln_no
+GROUP BY
+  ai.pbac_no, ai.pbac_srno, ai.cmdt_ln_no, ai.cmdt_nm,
+  ic.model_name, ic.model_ver, ic.confidence, ic.rationale,
+  c1.name_ko, c2.name_ko, c3.name_ko, ic.updated_at;
+
+-- VIEW 사용 예시 1) 전체를 최신순으로 검토
+SELECT *
+FROM vw_item_classification_review
+ORDER BY updated_at DESC, pbac_no, pbac_srno, cmdt_ln_no;
+
+-- VIEW 사용 예시 2) fallback만 보기
+SELECT *
+FROM vw_item_classification_review
+WHERE category_lv1='기타' AND category_lv2='미분류' AND category_leaf='기타'
+ORDER BY pbac_no, pbac_srno, cmdt_ln_no;
+
+-- VIEW 사용 예시 3) OpenAI 분류만 보기
+SELECT *
+FROM vw_item_classification_review
+WHERE model_name='openai'
+ORDER BY updated_at DESC;
+
 -- 추가로 “진짜 빠른 최종 sanity check” 3줄
 -- 분류 누락(0이면 정상)
 SELECT COUNT(*) AS missing_class
