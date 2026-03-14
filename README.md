@@ -58,7 +58,8 @@ CUSTOMS-ACCESS-IMPROVEMENT-SERVICE/
 기존 `unipass_all_2b.json`, `unipass_all_2c.json`이 있으면 생략 가능합니다.
 
 ```bash
-python project/AWSLambda/unipass_list.py
+python project/AWSLambda/UNIPASS_LIST_Business.py
+python project/AWSLambda/UNIPASS_LIST_Personal.py
 ```
 
 이미지 수집(선택):
