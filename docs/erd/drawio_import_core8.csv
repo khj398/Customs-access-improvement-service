@@ -1,0 +1,22 @@
+## Draw.io CSV Import (Core 8 tables)
+## Paste this file content in draw.io: Arrange > Insert > Advanced > CSV
+## Label/Style settings
+# label: %name%\n%pk%
+# style: shape=swimlane;startSize=24;horizontal=0;rounded=1;whiteSpace=wrap;html=1;
+# width: 230
+# height: auto
+# padding: 10
+# ignore: id,pk
+# namespace: csvimport-
+# connect: {"from":"from","to":"to","label":"%rel%","style":"endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;rounded=0;html=1;"}
+id,name,pk,from,to,rel
+1,customs_office,cstm_sgn (PK),,,
+2,bonded_warehouse,snar_sgn (PK)\ncstm_sgn (FK),1,2,1:N
+3,cargo_type,cargo_tpcd (PK),, ,
+4,auction,pbac_no (PK)\ncstm_sgn (FK)\nsnar_sgn (FK)\ncargo_tpcd (FK),1,4,1:N
+5,auction_item,pbac_no (PK/FK)\npbac_srno (PK)\ncmdt_ln_no (PK),4,5,1:N
+6,auction_item_image,pbac_no (PK/FK)\npbac_srno (PK/FK)\ncmdt_ln_no (PK/FK)\nimage_seq (PK),5,6,1:N
+7,item_classification,pbac_no (PK/FK)\npbac_srno (PK/FK)\ncmdt_ln_no (PK/FK)\ncategory_id (FK),5,7,1:0..1
+8,item_search_token,pbac_no (PK/FK)\npbac_srno (PK/FK)\ncmdt_ln_no (PK/FK)\ntoken (PK),5,8,1:N
+9,category,category_id (PK)\nparent_id (FK),9,9,1:N (self)
+10,item_classification,pbac_no (PK/FK)\npbac_srno (PK/FK)\ncmdt_ln_no (PK/FK)\ncategory_id (FK),9,10,1:N
