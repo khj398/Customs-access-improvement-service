@@ -1,0 +1,42 @@
+## Draw.io CSV Import (Full schema)
+## Paste this file content in draw.io: Arrange > Insert > Advanced > CSV
+# label: %name%\n%pk%
+# style: shape=swimlane;startSize=24;horizontal=0;rounded=1;whiteSpace=wrap;html=1;
+# width: 240
+# height: auto
+# padding: 10
+# ignore: id,pk
+# namespace: csvimport-
+# connect: {"from":"from","to":"to","label":"%rel%","style":"endArrow=ERmany;endFill=0;startArrow=ERone;startFill=0;rounded=0;html=1;"}
+id,name,pk,from,to,rel
+1,customs_office,cstm_sgn (PK),,,
+2,bonded_warehouse,snar_sgn (PK)\ncstm_sgn (FK),1,2,1:N
+3,cargo_type,cargo_tpcd (PK),,,
+4,unit_code,unit_cd (PK),,,
+5,auction,pbac_no (PK)\ncstm_sgn (FK)\nsnar_sgn (FK)\ncargo_tpcd (FK),1,5,1:N
+6,auction_item,pbac_no (PK/FK)\npbac_srno (PK)\ncmdt_ln_no (PK)\ncmdt_qty_ut_cd (FK)\ncmdt_wght_ut_cd (FK),5,6,1:N
+7,auction_item_image,pbac_no (PK/FK)\npbac_srno (PK/FK)\ncmdt_ln_no (PK/FK)\nimage_seq (PK),6,7,1:N
+8,category,category_id (PK)\nparent_id (FK),8,8,1:N (self)
+9,item_classification,pbac_no (PK/FK)\npbac_srno (PK/FK)\ncmdt_ln_no (PK/FK)\ncategory_id (FK),6,9,1:0..1
+10,item_classification,pbac_no (PK/FK)\npbac_srno (PK/FK)\ncmdt_ln_no (PK/FK)\ncategory_id (FK),8,10,N:1
+11,synonym_dictionary,dict_id (PK),,,
+12,item_search_token,pbac_no (PK/FK)\npbac_srno (PK/FK)\ncmdt_ln_no (PK/FK)\ntoken (PK),6,12,1:N
+13,auction_item,qty/wght unit FK -> unit_code,4,13,1:N (qty,wght)
+14,app_user,user_id (PK),,,
+15,user_auth_provider,auth_provider_id (PK)\nuser_id (FK),14,15,1:N
+16,user_profile,user_id (PK/FK),14,16,1:0..1
+17,user_watchlist_target,watch_target_id (PK)\nuser_id (FK),14,17,1:N
+18,user_notification_rule,notification_rule_id (PK)\nuser_id (FK)\nwatch_target_id (FK),14,18,1:N
+19,user_notification_rule,notification_rule_id (PK)\nuser_id (FK)\nwatch_target_id (FK),17,19,1:N
+20,user_notification_event,notification_event_id (PK)\nuser_id (FK)\nnotification_rule_id (FK)\nwatch_target_id (FK),14,20,1:N
+21,user_notification_event,notification_event_id (PK)\n... ,18,21,1:N
+22,user_notification_event,notification_event_id (PK)\n... ,17,22,1:N
+23,user_recent_search,history_id (PK)\nuser_id (FK),14,23,1:N
+24,user_auction_activity,activity_id (PK)\nuser_id (FK),14,24,1:N
+25,ingestion_run,ingestion_run_id (PK),,,
+26,raw_auction_payload,payload_id (PK)\ningestion_run_id (FK),25,26,1:N
+27,auction_item_change_event,event_id (PK)\nitem key(FK)\ningestion_run_id (FK),6,27,1:N
+28,auction_item_change_event,event_id (PK)\n... ,25,28,1:N
+29,recollect_job_queue,job_id (PK),,,
+30,classification_job_queue,job_id (PK)\nitem key(logical),6,30,logical N:1
+31,notification_job_queue,job_id (PK)\nuser_id/watch_target/event(logical),14,31,logical N:1
