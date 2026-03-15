@@ -56,7 +56,11 @@ SQL 파일 내용을 통째로 복사해서 Workbench 쿼리 탭에 붙여넣어
 - 기존 데이터가 있는 환경에서는 `schema_create.sql` 대신 `schema_patch_v2.sql`만 적용해도 된다.
 
 1-2) `schema_app_user_v1.sql`  
-- `app_user` 도메인(회원/소셜연동/관심대상/알림룰/알림이력) 스키마를 생성한다.
+- `app_user` 도메인(회원/소셜연동/관심대상/알림룰/알림이력) 스키마를 **별도 DB(`app_user`)** 로 생성한다.
+
+1-2-alt) `schema_app_user_unified_v1.sql`  
+- 사용자 도메인을 **현재 선택된 단일 DB(예: `customs_auction`)** 에 통합 생성한다.
+- D-1 데모처럼 운영 단순화가 필요할 때 사용한다.
 
 ---
 
