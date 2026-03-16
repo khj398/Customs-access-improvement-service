@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>디지털 세관 데모</title>
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #1a1b33;
+      --muted: #9da0ad;
+      --line: #e7e8ee;
+      --primary: #3b82f6;
+      --primary-dark: #171a3b;
+      --success: #10b981;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Pretendard", "Noto Sans KR", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 18px;
+    }
+    .phone {
+      width: min(420px, 100%);
+      height: 860px;
+      background: var(--bg);
+      border-radius: 26px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, .15);
+    }
+    .screen {
+      position: absolute;
+      inset: 0;
+      padding: 22px 18px 98px;
+      overflow-y: auto;
+      display: none;
+    }
+    .screen.active { display: block; }
+    h1 { margin: 8px 0 20px; font-size: 48px; line-height: .95; }
+    h2 { margin: 0; font-size: 20px; }
+    .label { color: var(--primary); font-weight: 700; letter-spacing: 2px; }
+    .search {
+      margin-top: 14px;
+      background: #eaecf2;
+      border: 1px solid #e2e4ea;
+      border-radius: 20px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 18px;
+      color: #b0b3bf;
+      font-size: 18px;
+    }
+    .chips { display: flex; overflow-x: auto; gap: 8px; margin: 14px 0 16px; }
+    .chip {
+      border-radius: 999px;
+      padding: 12px 20px;
+      background: #e7e8ec;
+      color: #7c7f8a;
+      white-space: nowrap;
+      font-weight: 700;
+    }
+    .chip.active { background: var(--primary-dark); color: white; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid #ebedf2;
+      cursor: pointer;
+    }
+    .thumb {
+      height: 168px;
+      background: linear-gradient(#e8e9ec, #dde0e7);
+      display: grid;
+      place-items: center;
+      color: #a6abb4;
+      font-size: 44px;
+    }
+    .content { padding: 12px; }
+    .cat { color: #8e919d; margin: 0 0 4px; }
+    .name { margin: 0; font-size: 20px; font-weight: 800; }
+    .price { margin: 6px 0 0; color: var(--primary); font-size: 24px; font-weight: 800; }
+
+    .hero {
+      margin: 16px 0;
+      padding: 24px;
+      border-radius: 28px;
+      background: #1f345f;
+      color: #fff;
+    }
+    .hero .tag {
+      display: inline-block;
+      background: #60a5fa;
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .section { margin: 20px 0 14px; display: flex; justify-content: space-between; align-items: center; }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .avatar {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: #dbe7ff;
+      display: grid;
+      place-items: center;
+      color: #3f7be5;
+      font-size: 32px;
+    }
+    .stats {
+      background: #fff;
+      border-radius: 16px;
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      border: 1px solid #eceef2;
+      margin-bottom: 14px;
+    }
+    .stats div { text-align: center; padding: 12px 6px; }
+    .stats b { color: var(--primary); font-size: 34px; }
+
+    .calendar {
+      background: #fff;
+      border: 1px solid #eceef2;
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .calendar-grid {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: repeat(7,1fr);
+      gap: 10px;
+      text-align: center;
+      font-size: 14px;
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #a78bfa; margin: 4px auto 0; }
+    .selected {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--primary-dark);
+      color: #fff;
+      margin: 0 auto;
+      display: grid;
+      place-items: center;
+    }
+
+    .bottom {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 78px;
+      background: #fff;
+      border-top: 1px solid #ebeef4;
+      display: grid;
+      grid-template-columns: repeat(4,1fr);
+    }
+    .tab {
+      display: grid;
+      place-items: center;
+      color: #c4c5cb;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .tab.active { color: var(--primary); font-weight: 700; }
+
+    .modal, .sheet {
+      position: absolute;
+      inset: 0;
+      display: none;
+    }
+    .modal.show, .sheet.show { display: block; }
+    .dim {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,.45);
+    }
+    .modal-panel {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      background: #fff;
+      border-radius: 22px 22px 0 0;
+      max-height: 58%;
+      overflow: auto;
+      padding: 16px;
+    }
+    .detail {
+      background: #fff;
+      position: absolute;
+      inset: 0;
+      display: none;
+      overflow-y: auto;
+    }
+    .detail.show { display: block; }
+    .detail .hero-image { height: 340px; background: #d8d9dd; display: grid; place-items: center; font-size: 80px; color: #a6abb4; }
+    .panel {
+      margin-top: -22px;
+      border-radius: 22px 22px 0 0;
+      background: #fff;
+      padding: 20px;
+      min-height: 440px;
+    }
+    .btn {
+      margin-top: 18px;
+      background: var(--primary-dark);
+      color: #fff;
+      height: 56px;
+      border: 0;
+      border-radius: 14px;
+      width: 100%;
+      font-size: 30px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <section class="screen active" id="home">
+      <div class="label">CUSTOMS AUCTION</div>
+      <h1>디지털 세관</h1>
+      <div class="search">🔍 가장 가치있는 물품을 찾아보세요</div>
+      <div class="hero">
+        <div class="tag">NEW DROP</div>
+        <h2>이번 주 새로 등록된 공매</h2>
+      </div>
+      <div class="section"><h2>Curated For You</h2><b style="color:#b4b6bf">SEE ALL</b></div>
+      <div class="grid">
+        <article class="card" data-detail="COTTON SEED HULL"><div class="thumb">▣</div><div class="content"><p class="cat">기타</p><p class="name">COTTON SEED HULL</p><p class="price">37M원</p></div></article>
+        <article class="card" data-detail="TRAY WATER HYACINTH"><div class="thumb">▣</div><div class="content"><p class="cat">생활·주방</p><p class="name">TRAY WATER HYACINTH</p><p class="price">6.4M원</p></div></article>
+      </div>
+    </section>
+
+    <section class="screen" id="search">
+      <h1>DISCOVER</h1>
+      <div class="search">🔍 Search for treasures...</div>
+      <div class="chips">
+        <span class="chip active">전체</span><span class="chip">산업·장비</span><span class="chip">전자·전기</span><span class="chip">컴퓨터·모바일</span><span class="chip">가전</span>
+      </div>
+      <div class="grid">
+        <article class="card" data-detail="COTTON SEED HULL"><div class="thumb">▣</div><div class="content"><p class="cat">기타</p><p class="name">COTTON SEED HULL</p><p class="price">36,993,340원</p></div></article>
+        <article class="card" data-detail="TRAY WATER HYACINTH DIA: 20 CM"><div class="thumb">▣</div><div class="content"><p class="cat">생활·주방</p><p class="name">TRAY WATER HYACINTH DIA: 20 CM</p><p class="price">6,352,190원</p></div></article>
+        <article class="card"><div class="thumb">▣</div><div class="content"><p class="cat">생활·주방</p><p class="name">TOILET PAPER</p><p class="price">6,352,190원</p></div></article>
+        <article class="card"><div class="thumb">▣</div><div class="content"><p class="cat">생활·주방</p><p class="name">GLASS DRINKING WITH DOTS</p><p class="price">6,352,190원</p></div></article>
+      </div>
+    </section>
+
+    <section class="screen" id="bids">
+      <h1>찜한 상품</h1>
+      <article class="card" data-detail="COTTON SEED HULL" style="padding:12px; display:flex; gap:12px; align-items:center;">
+        <div class="thumb" style="width:120px;height:120px;border-radius:14px;">▣</div>
+        <div><p class="cat">기타</p><p class="name">COTTON SEED HULL</p><p class="price">37M원</p></div>
+        <div style="margin-left:auto;font-size:30px;color:#ef4444">♥</div>
+      </article>
+    </section>
+
+    <section class="screen" id="my">
+      <h1>MY PAGE</h1>
+      <div class="profile"><div class="avatar">👤</div><div><div style="font-size:42px;font-weight:800">test</div><div style="color:#8b8d95">test@test.com</div></div></div>
+      <div class="stats">
+        <div><b>0</b><div>입찰 참여</div></div>
+        <div><b>0</b><div>낙찰 성공</div></div>
+        <div><b>1</b><div>찜한 상품</div></div>
+      </div>
+      <div class="calendar">
+        <h2>📅 공매 일정 캘린더</h2>
+        <div class="calendar-grid">
+          <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+          <div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div>
+          <div>8</div><div>9</div><div>10</div><div>11</div><div>12<div class="dot"></div></div><div>13</div><div>14</div>
+          <div class="selected">15</div><div>16</div><div>17</div><div>18</div><div>19</div><div>20</div><div>21</div>
+        </div>
+        <button class="btn" id="openSheet">3월 12일 마감 물품 보기</button>
+      </div>
+    </section>
+
+    <nav class="bottom">
+      <div class="tab active" data-target="home">🏠<span>홈</span></div>
+      <div class="tab" data-target="search">🔎<span>검색</span></div>
+      <div class="tab" data-target="bids">📂<span>내 입찰</span></div>
+      <div class="tab" data-target="my">👤<span>MY</span></div>
+    </nav>
+
+    <div class="sheet" id="sheet">
+      <div class="dim" id="closeSheet"></div>
+      <div class="modal-panel">
+        <h2>3월 12일 마감 물품 92건</h2>
+        <ul style="list-style:none;padding:0;margin:12px 0 0;display:grid;gap:10px;">
+          <li style="display:flex;justify-content:space-between;background:#f8f8fa;padding:10px;border-radius:12px;"><span>WINE · 인천세관</span><b style="color:var(--primary)">1억원</b></li>
+          <li style="display:flex;justify-content:space-between;background:#f8f8fa;padding:10px;border-radius:12px;"><span>클리큐 아쿠아팜 컴케어 키트</span><b style="color:var(--primary)">2964만원</b></li>
+          <li style="display:flex;justify-content:space-between;background:#f8f8fa;padding:10px;border-radius:12px;"><span>CANDLE AS EGG PINK</span><b style="color:var(--primary)">882만원</b></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="detail" id="detail">
+      <div class="hero-image">▣</div>
+      <div class="panel">
+        <div class="cat">기타</div>
+        <h2 id="detailTitle" style="font-size:44px;margin:4px 0 10px;">COTTON SEED HULL</h2>
+        <div style="display:flex;justify-content:space-between;align-items:end;">
+          <div><div style="color:#a6a8b1">CURRENT PRICE</div><div class="price">36,993,340원</div></div>
+          <div><div style="color:#a6a8b1">STATUS</div><div style="color:var(--success);font-weight:800">◷ 진행중</div></div>
+        </div>
+        <h2 style="margin-top:14px;">Lot Information</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;color:#6f727e;">
+          <div>세관명</div><b style="text-align:right">광양세관</b>
+          <div>물품명</div><b style="text-align:right">COTTON SEED HULL</b>
+          <div>공매예정가격</div><b style="text-align:right">36,993,340원</b>
+          <div>공매종료일시</div><b style="text-align:right">2026-03-26 04:00</b>
+        </div>
+        <button class="btn" id="closeDetail">Place Your Bid</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tabs = document.querySelectorAll('.tab');
+    const screens = document.querySelectorAll('.screen');
+    const sheet = document.getElementById('sheet');
+    const detail = document.getElementById('detail');
+    const detailTitle = document.getElementById('detailTitle');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        const target = tab.dataset.target;
+        screens.forEach(s => s.classList.toggle('active', s.id === target));
+      });
+    });
+
+    document.querySelectorAll('[data-detail]').forEach(card => {
+      card.addEventListener('click', () => {
+        detailTitle.textContent = card.dataset.detail;
+        detail.classList.add('show');
+      });
+    });
+
+    document.getElementById('closeDetail').addEventListener('click', () => detail.classList.remove('show'));
+    document.getElementById('openSheet').addEventListener('click', () => sheet.classList.add('show'));
+    document.getElementById('closeSheet').addEventListener('click', () => sheet.classList.remove('show'));
+  </script>
+</body>
+</html>
