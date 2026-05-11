@@ -372,6 +372,14 @@ rules:
   # 가전
   # =======================================================
 
+  - id: appliance_tv
+    priority: 89
+    keywords_any: [TV, TELEVISION, TELEVISIONS]
+    keywords_all: []
+    category_path: [가전, 생활가전]
+    confidence: 0.88
+    rationale: "TV·텔레비전 키워드 → 가전 > 생활가전"
+
   - id: appliance_refrigerator
     priority: 90
     keywords_any: [REFRIGERATOR, REFRIGERATORS, FRIDGE]
@@ -410,8 +418,16 @@ rules:
 
   - id: kitchen_utensil
     priority: 94
-    keywords_any: [TRAY, JUG, TRIVET, COASTER, PLACEMAT]
+    keywords_any: [TRAY, JUG, TRIVET, COASTER, PLACEMAT, BASKET, CANDLE]
     keywords_all: []
     category_path: [생활·주방, 주방·식탁, 주방용품]
     confidence: 0.76
-    rationale: "주방용품 키워드 — TRAY/JUG/TRIVET/COASTER 등 (NAPKIN/TISSUE 제외 — 장식용 충돌 우려)"
+    rationale: "주방용품 키워드 — TRAY/JUG/BASKET/CANDLE 등 추가 (OpenAI 산업장비 오분류 수정)"
+
+  - id: sports_hobby_craft
+    priority: 86
+    keywords_any: [DRAWING, SKETCH, CRAFT, PAINTING, PHOTOGRAPHIC, PHOTOGRAPHY, CALLIGRAPHY]
+    keywords_all: []
+    category_path: [스포츠·레저, 취미·악기]
+    confidence: 0.76
+    rationale: "미술·사진·공예 취미 키워드 — FRAME FOR DRAWING / PHOTOGRAPHIC LAMP 오분류 수정"

@@ -783,7 +783,10 @@ class OpenAIClassifier:
             "   - 0.85 이상: 키워드가 카테고리와 명확히 일치\n"
             "   - 0.70~0.84: 맥락상 합리적이나 다른 해석 가능\n"
             "   - 0.70 미만: 불확실 → alternative에 차선 경로 기재\n"
-            "5. category_path는 반드시 candidate_categories 목록 중 하나여야 합니다\n\n"
+            "5. category_path는 반드시 candidate_categories 목록 중 하나여야 합니다\n"
+            "6. [중요] 어떤 카테고리에도 명확히 속하지 않는 물품(장식품·잡화·불명 물품 등)은\n"
+            "   억지로 관련 없는 카테고리에 배치하지 말고 반드시 '기타 > 미분류'를 선택하고\n"
+            "   confidence를 0.60 이하로 설정하세요.\n\n"
             "반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 절대 포함하지 마세요."
         )
 
