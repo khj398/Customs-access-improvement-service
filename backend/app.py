@@ -8,6 +8,9 @@ CAIS Backend — Search-first API
   GET /search/autocomplete                 자동완성
   GET /items                               전체 목록 (기존 호환)
   GET /items/{pbac_no}/{pbac_srno}/{cmdt_ln_no}/images  이미지 목록
+  GET /stats                               전체 물품·분류 현황 통계
+  GET /stats/categories                    카테고리별 물품 분포
+  GET /stats/pipeline                      파이프라인 실행 이력
 
 검색 엔진 설계
 ──────────────
@@ -469,3 +472,167 @@ def item_images(
             img["updated_at"] = img["updated_at"].isoformat()
 
     return {"images": images}
+
+
+# ─────────────────────────────────────────────────────────────────────
+# 모니터링 — 데이터 현황 & 파이프라인 이력
+# ─────────────────────────────────────────────────────────────────────
+
+@app.get("/stats")
+def get_stats() -> Dict[str, Any]:
+    """
+    전체 물품 수 / 분류 완료 수 / 미분류 수 / 최근 7일 신규 수집.
+
+    반환 예시:
+      {
+        "total_items": 93,
+        "classified": 92,
+        "unclassified": 1,
+        "classification_rate": 98.9,
+        "by_source": {"rule": 71, "openai": 21},
+        "recent_7days": {"new_items": 0, "change_events": 0}
+      }
+    """
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) AS total FROM auction_item")
+            total = cur.fetchone()["total"]
+
+            cur.execute(
+                "SELECT COUNT(*) AS cls,"
+                " SUM(model_name='rule') AS by_rule,"
+                " SUM(model_name='openai') AS by_openai"
+                " FROM item_classification"
+            )
+            cls = cur.fetchone()
+
+            cur.execute(
+                "SELECT COUNT(*) AS new7 FROM auction"
+                " WHERE created_at >= NOW() - INTERVAL 7 DAY"
+            )
+            new7 = cur.fetchone()["new7"]
+
+            cur.execute(
+                "SELECT COUNT(*) AS changes FROM auction_item_change_event"
+                " WHERE detected_at >= NOW() - INTERVAL 7 DAY"
+            )
+            changes = cur.fetchone()["changes"]
+
+    classified = int(cls["cls"] or 0)
+    return {
+        "total_items": total,
+        "classified": classified,
+        "unclassified": total - classified,
+        "classification_rate": round(classified / total * 100, 1) if total else 0.0,
+        "by_source": {
+            "rule": int(cls["by_rule"] or 0),
+            "openai": int(cls["by_openai"] or 0),
+        },
+        "recent_7days": {
+            "new_items": new7,
+            "change_events": changes,
+        },
+    }
+
+
+@app.get("/stats/categories")
+def get_category_stats(
+    limit: int = Query(default=20, ge=1, le=100, description="반환할 카테고리 수"),
+) -> Dict[str, Any]:
+    """
+    카테고리별 물품 분포 (대분류 → 중분류 기준).
+
+    반환 예시:
+      {
+        "categories": [
+          {"top_category": "의류·패션잡화", "mid_category": null, "item_count": 32},
+          ...
+        ]
+      }
+    """
+    sql = """
+        SELECT
+            c1.name_ko AS top_category,
+            CASE WHEN c.level >= 2 THEN c2.name_ko ELSE NULL END AS mid_category,
+            COUNT(*) AS item_count
+        FROM item_classification ic
+        JOIN category c  ON ic.category_id = c.category_id
+        LEFT JOIN category c2 ON c2.category_id = (
+            CASE WHEN c.level = 3 THEN c.parent_id
+                 WHEN c.level = 2 THEN c.category_id
+                 ELSE NULL END
+        )
+        LEFT JOIN category c1 ON c1.category_id = (
+            CASE WHEN c.level = 3 THEN (
+                     SELECT parent_id FROM category WHERE category_id = c.parent_id
+                 )
+                 WHEN c.level = 2 THEN c.parent_id
+                 ELSE c.category_id END
+        )
+        GROUP BY c1.name_ko, mid_category
+        ORDER BY item_count DESC
+        LIMIT %s
+    """
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (limit,))
+            rows = cur.fetchall()
+
+    return {"categories": rows, "total_shown": len(rows)}
+
+
+@app.get("/stats/pipeline")
+def get_pipeline_stats(
+    limit: int = Query(default=10, ge=1, le=50, description="반환할 실행 이력 수"),
+) -> Dict[str, Any]:
+    """
+    최근 파이프라인 실행 이력 (ingestion_run 테이블).
+
+    반환 예시:
+      {
+        "runs": [
+          {
+            "ingestion_run_id": 14,
+            "source_name": "unipass_list_business",
+            "collector_source": "BUSINESS",
+            "status": "SUCCESS",
+            "raw_item_count": 93,
+            "upsert_count": 93,
+            "error_count": 0,
+            "started_at": "2026-03-12T00:42:06",
+            "finished_at": "2026-03-12T00:42:07",
+            "duration_sec": 1,
+            "error_message": null
+          },
+          ...
+        ]
+      }
+    """
+    sql = """
+        SELECT
+            ingestion_run_id,
+            source_name,
+            collector_source,
+            status,
+            raw_item_count,
+            upsert_count,
+            error_count,
+            started_at,
+            finished_at,
+            TIMESTAMPDIFF(SECOND, started_at, finished_at) AS duration_sec,
+            error_message
+        FROM ingestion_run
+        ORDER BY started_at DESC
+        LIMIT %s
+    """
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, (limit,))
+            runs = cur.fetchall()
+
+    for r in runs:
+        for k in ("started_at", "finished_at"):
+            if isinstance(r.get(k), datetime):
+                r[k] = r[k].isoformat()
+
+    return {"runs": runs, "total_shown": len(runs)}
