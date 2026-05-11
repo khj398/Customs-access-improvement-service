@@ -1,0 +1,448 @@
+# =========================================================
+# CAIS 동의어 사전 (synonyms.yaml)
+# =========================================================
+#
+# 형식
+# ----
+# - src    : 물품명에서 추출되는 영문 토큰 (대문자)
+# - terms  : 사용자가 검색할 한국어/영문 동의어 목록
+#              text  : 검색어
+#              type  : TRANSLATION | SYN | CATEGORY_HINT
+#              weight: 검색 가중치 (1.0 기본, 높을수록 중요)
+#
+# 추가 기준
+# ---------
+# - 사용자 검색 쿼리와 물품 토큰을 연결하는 다리 역할
+# - src_term 이 raw_token 에 포함되면 norm_term 이 SYN 토큰으로 생성됨
+# - weight 1.8+ : 번역이 명확한 핵심 키워드
+# - weight 1.2~1.5 : 카테고리 힌트 / 부가 동의어
+
+synonyms:
+
+  # =======================================================
+  # 의류·패션잡화
+  # =======================================================
+
+  - src: SHIRT
+    terms:
+      - {text: 셔츠,   type: TRANSLATION, weight: 1.90}
+      - {text: 티셔츠, type: SYN,         weight: 1.60}
+      - {text: 의류,   type: CATEGORY_HINT, weight: 1.40}
+
+  - src: TSHIRT
+    terms:
+      - {text: 티셔츠, type: TRANSLATION, weight: 1.90}
+      - {text: 셔츠,   type: SYN,         weight: 1.50}
+
+  - src: PANTS
+    terms:
+      - {text: 바지,   type: TRANSLATION, weight: 1.90}
+      - {text: 팬츠,   type: SYN,         weight: 1.60}
+      - {text: 의류,   type: CATEGORY_HINT, weight: 1.30}
+
+  - src: JACKET
+    terms:
+      - {text: 재킷,   type: TRANSLATION, weight: 1.90}
+      - {text: 점퍼,   type: SYN,         weight: 1.40}
+      - {text: 의류,   type: CATEGORY_HINT, weight: 1.30}
+
+  - src: VEST
+    terms:
+      - {text: 조끼,   type: TRANSLATION, weight: 1.80}
+      - {text: 베스트, type: SYN,         weight: 1.60}
+
+  - src: COAT
+    terms:
+      - {text: 코트,   type: TRANSLATION, weight: 1.80}
+      - {text: 외투,   type: SYN,         weight: 1.40}
+
+  - src: DRESS
+    terms:
+      - {text: 원피스, type: TRANSLATION, weight: 1.90}
+      - {text: 드레스, type: SYN,         weight: 1.70}
+
+  - src: SKIRT
+    terms:
+      - {text: 스커트, type: TRANSLATION, weight: 1.90}
+      - {text: 치마,   type: SYN,         weight: 1.60}
+
+  - src: SNEAKER
+    terms:
+      - {text: 운동화, type: TRANSLATION, weight: 2.00}
+      - {text: 스니커즈, type: SYN,       weight: 1.80}
+      - {text: 신발,   type: SYN,         weight: 1.40}
+
+  - src: SHOE
+    terms:
+      - {text: 신발,   type: TRANSLATION, weight: 1.90}
+      - {text: 슈즈,   type: SYN,         weight: 1.60}
+      - {text: 구두,   type: SYN,         weight: 1.30}
+
+  - src: SHOES
+    terms:
+      - {text: 신발,   type: TRANSLATION, weight: 1.90}
+      - {text: 슈즈,   type: SYN,         weight: 1.60}
+
+  - src: BOOTS
+    terms:
+      - {text: 부츠,   type: TRANSLATION, weight: 1.90}
+      - {text: 신발,   type: SYN,         weight: 1.30}
+
+  - src: FLAT
+    terms:
+      - {text: 플랫슈즈, type: TRANSLATION, weight: 1.70}
+      - {text: 신발,     type: SYN,         weight: 1.20}
+
+  - src: LOAFER
+    terms:
+      - {text: 로퍼,   type: TRANSLATION, weight: 1.90}
+      - {text: 신발,   type: SYN,         weight: 1.20}
+
+  - src: BAG
+    terms:
+      - {text: 가방,   type: TRANSLATION, weight: 1.90}
+      - {text: 백,     type: SYN,         weight: 1.60}
+
+  - src: WOVEN
+    terms:
+      - {text: 직물,   type: TRANSLATION, weight: 1.80}
+      - {text: 원단,   type: SYN,         weight: 1.60}
+      - {text: 천,     type: SYN,         weight: 1.20}
+
+  - src: FABRIC
+    terms:
+      - {text: 원단,   type: TRANSLATION, weight: 1.80}
+      - {text: 직물,   type: SYN,         weight: 1.60}
+      - {text: 천,     type: SYN,         weight: 1.20}
+
+  - src: COTTON
+    terms:
+      - {text: 면,     type: TRANSLATION, weight: 1.70}
+      - {text: 코튼,   type: SYN,         weight: 1.50}
+      - {text: 면직물, type: SYN,         weight: 1.30}
+
+  - src: DENIM
+    terms:
+      - {text: 데님,   type: TRANSLATION, weight: 1.80}
+      - {text: 청바지, type: SYN,         weight: 1.40}
+
+  - src: LINEN
+    terms:
+      - {text: 린넨,   type: TRANSLATION, weight: 1.80}
+      - {text: 마직물, type: SYN,         weight: 1.30}
+
+  - src: KNIT
+    terms:
+      - {text: 니트,   type: TRANSLATION, weight: 1.80}
+      - {text: 뜨개,   type: SYN,         weight: 1.20}
+
+  - src: RESHGUARD
+    terms:
+      - {text: 래쉬가드, type: TRANSLATION, weight: 2.00}
+      - {text: 수영복,   type: SYN,         weight: 1.40}
+
+  # =======================================================
+  # 식품·음료
+  # =======================================================
+
+  - src: PEPPER
+    terms:
+      - {text: 고추,   type: TRANSLATION, weight: 1.90}
+      - {text: 페퍼,   type: SYN,         weight: 1.50}
+
+  - src: PAPRIKA
+    terms:
+      - {text: 파프리카, type: TRANSLATION, weight: 1.90}
+
+  - src: GARLIC
+    terms:
+      - {text: 마늘,   type: TRANSLATION, weight: 1.90}
+
+  - src: GINGER
+    terms:
+      - {text: 생강,   type: TRANSLATION, weight: 1.90}
+
+  - src: DRIED
+    terms:
+      - {text: 건조,   type: TRANSLATION, weight: 1.50}
+      - {text: 말린,   type: SYN,         weight: 1.30}
+
+  - src: CHILI
+    terms:
+      - {text: 칠리,   type: TRANSLATION, weight: 1.70}
+      - {text: 고추,   type: SYN,         weight: 1.50}
+
+  - src: SPICE
+    terms:
+      - {text: 향신료, type: TRANSLATION, weight: 1.70}
+      - {text: 스파이스, type: SYN,       weight: 1.40}
+
+  - src: WINE
+    terms:
+      - {text: 와인,   type: TRANSLATION, weight: 2.00}
+      - {text: 포도주, type: SYN,         weight: 1.60}
+      - {text: 주류,   type: CATEGORY_HINT, weight: 1.50}
+
+  - src: WHISKY
+    terms:
+      - {text: 위스키, type: TRANSLATION, weight: 1.90}
+      - {text: 주류,   type: CATEGORY_HINT, weight: 1.40}
+
+  - src: WHISKEY
+    terms:
+      - {text: 위스키, type: TRANSLATION, weight: 1.90}
+
+  - src: VODKA
+    terms:
+      - {text: 보드카, type: TRANSLATION, weight: 1.90}
+
+  - src: RUM
+    terms:
+      - {text: 럼,     type: TRANSLATION, weight: 1.80}
+
+  - src: SAKE
+    terms:
+      - {text: 사케,   type: TRANSLATION, weight: 1.80}
+      - {text: 청주,   type: SYN,         weight: 1.40}
+
+  - src: TEQUILA
+    terms:
+      - {text: 데킬라, type: TRANSLATION, weight: 1.90}
+
+  - src: LIQUEUR
+    terms:
+      - {text: 리큐르, type: TRANSLATION, weight: 1.80}
+      - {text: 리큐어, type: SYN,         weight: 1.60}
+
+  # =======================================================
+  # 생활·주방
+  # =======================================================
+
+  - src: PLATE
+    terms:
+      - {text: 접시,   type: TRANSLATION, weight: 1.90}
+      - {text: 플레이트, type: SYN,       weight: 1.50}
+      - {text: 식기,   type: CATEGORY_HINT, weight: 1.30}
+
+  - src: BOWL
+    terms:
+      - {text: 그릇,   type: TRANSLATION, weight: 1.90}
+      - {text: 볼,     type: SYN,         weight: 1.60}
+      - {text: 식기,   type: CATEGORY_HINT, weight: 1.20}
+
+  - src: MUG
+    terms:
+      - {text: 머그컵, type: TRANSLATION, weight: 1.90}
+      - {text: 컵,     type: SYN,         weight: 1.50}
+      - {text: 머그,   type: SYN,         weight: 1.70}
+
+  - src: CUP
+    terms:
+      - {text: 컵,     type: TRANSLATION, weight: 1.80}
+      - {text: 잔,     type: SYN,         weight: 1.50}
+
+  - src: TUMBLER
+    terms:
+      - {text: 텀블러, type: TRANSLATION, weight: 2.00}
+      - {text: 컵,     type: SYN,         weight: 1.30}
+
+  - src: GLASS
+    terms:
+      - {text: 유리잔, type: TRANSLATION, weight: 1.70}
+      - {text: 잔,     type: SYN,         weight: 1.50}
+      - {text: 글라스, type: SYN,         weight: 1.40}
+
+  - src: BOTTLE
+    terms:
+      - {text: 물병,   type: TRANSLATION, weight: 1.70}
+      - {text: 보틀,   type: SYN,         weight: 1.50}
+      - {text: 병,     type: SYN,         weight: 1.30}
+
+  - src: JAR
+    terms:
+      - {text: 항아리, type: TRANSLATION, weight: 1.60}
+      - {text: 잔,     type: SYN,         weight: 1.40}
+      - {text: 용기,   type: SYN,         weight: 1.20}
+
+  - src: TRAY
+    terms:
+      - {text: 트레이, type: TRANSLATION, weight: 1.90}
+      - {text: 쟁반,   type: SYN,         weight: 1.60}
+
+  - src: JUG
+    terms:
+      - {text: 주전자, type: TRANSLATION, weight: 1.80}
+      - {text: 저그,   type: SYN,         weight: 1.50}
+
+  - src: SPOON
+    terms:
+      - {text: 숟가락, type: TRANSLATION, weight: 1.90}
+      - {text: 스푼,   type: SYN,         weight: 1.70}
+
+  - src: FORK
+    terms:
+      - {text: 포크,   type: TRANSLATION, weight: 1.90}
+
+  - src: CHOPSTICK
+    terms:
+      - {text: 젓가락, type: TRANSLATION, weight: 1.90}
+
+  - src: CHOPSTICKS
+    terms:
+      - {text: 젓가락, type: TRANSLATION, weight: 1.90}
+
+  - src: CANDLE
+    terms:
+      - {text: 초,     type: TRANSLATION, weight: 1.70}
+      - {text: 캔들,   type: SYN,         weight: 1.80}
+      - {text: 양초,   type: SYN,         weight: 1.50}
+
+  - src: BASKET
+    terms:
+      - {text: 바구니, type: TRANSLATION, weight: 1.80}
+      - {text: 바스켓, type: SYN,         weight: 1.50}
+
+  - src: NAPKIN
+    terms:
+      - {text: 냅킨,   type: TRANSLATION, weight: 1.80}
+      - {text: 냄킨,   type: SYN,         weight: 1.40}
+
+  - src: TISSUE
+    terms:
+      - {text: 티슈,   type: TRANSLATION, weight: 1.80}
+      - {text: 화장지, type: SYN,         weight: 1.30}
+
+  - src: TISSUES
+    terms:
+      - {text: 티슈,   type: TRANSLATION, weight: 1.80}
+
+  - src: CAN
+    terms:
+      - {text: 캔,     type: TRANSLATION, weight: 1.70}
+      - {text: 통,     type: SYN,         weight: 1.20}
+
+  # =======================================================
+  # 스포츠·레저
+  # =======================================================
+
+  - src: BALLOON
+    terms:
+      - {text: 풍선,   type: TRANSLATION, weight: 2.00}
+      - {text: 벌룬,   type: SYN,         weight: 1.40}
+
+  - src: TREADMILL
+    terms:
+      - {text: 러닝머신, type: TRANSLATION, weight: 2.00}
+      - {text: 트레드밀, type: SYN,         weight: 1.80}
+      - {text: 달리기기계, type: SYN,      weight: 1.20}
+
+  - src: SWIM
+    terms:
+      - {text: 수영,   type: TRANSLATION, weight: 1.80}
+      - {text: 수영용품, type: CATEGORY_HINT, weight: 1.40}
+
+  - src: TUBE
+    terms:
+      - {text: 튜브,   type: TRANSLATION, weight: 1.70}
+      - {text: 물놀이, type: SYN,         weight: 1.20}
+
+  - src: TOY
+    terms:
+      - {text: 장난감, type: TRANSLATION, weight: 2.00}
+      - {text: 완구,   type: CATEGORY_HINT, weight: 1.60}
+      - {text: 토이,   type: SYN,         weight: 1.40}
+
+  - src: TOYS
+    terms:
+      - {text: 장난감, type: TRANSLATION, weight: 2.00}
+      - {text: 완구,   type: CATEGORY_HINT, weight: 1.60}
+
+  - src: GAME
+    terms:
+      - {text: 게임,   type: TRANSLATION, weight: 1.80}
+      - {text: 완구,   type: CATEGORY_HINT, weight: 1.20}
+
+  - src: GUITAR
+    terms:
+      - {text: 기타,   type: TRANSLATION, weight: 2.00}
+      - {text: 악기,   type: CATEGORY_HINT, weight: 1.50}
+
+  - src: POOL
+    terms:
+      - {text: 수영장, type: TRANSLATION, weight: 1.70}
+      - {text: 풀장,   type: SYN,         weight: 1.50}
+      - {text: 물놀이, type: SYN,         weight: 1.30}
+
+  - src: BICYCLE
+    terms:
+      - {text: 자전거, type: TRANSLATION, weight: 1.90}
+
+  # =======================================================
+  # 가전
+  # =======================================================
+
+  - src: REFRIGERATOR
+    terms:
+      - {text: 냉장고, type: TRANSLATION, weight: 2.00}
+      - {text: 냉장,   type: SYN,         weight: 1.40}
+
+  - src: REFRIGERATORS
+    terms:
+      - {text: 냉장고, type: TRANSLATION, weight: 2.00}
+
+  - src: FRIDGE
+    terms:
+      - {text: 냉장고, type: TRANSLATION, weight: 2.00}
+
+  - src: TV
+    terms:
+      - {text: TV,     type: SYN,         weight: 1.80}
+      - {text: 텔레비전, type: TRANSLATION, weight: 1.80}
+      - {text: 티비,   type: SYN,         weight: 1.70}
+
+  - src: PRINTER
+    terms:
+      - {text: 프린터, type: TRANSLATION, weight: 1.90}
+      - {text: 출력기, type: SYN,         weight: 1.20}
+
+  - src: IPHONE
+    terms:
+      - {text: 아이폰, type: TRANSLATION, weight: 2.00}
+      - {text: 스마트폰, type: SYN,       weight: 1.40}
+
+  - src: IPAD
+    terms:
+      - {text: 아이패드, type: TRANSLATION, weight: 2.00}
+      - {text: 태블릿,   type: SYN,         weight: 1.50}
+
+  - src: LAPTOP
+    terms:
+      - {text: 노트북, type: TRANSLATION, weight: 2.00}
+      - {text: 랩탑,   type: SYN,         weight: 1.60}
+
+  # =======================================================
+  # 산업·장비 (보완)
+  # =======================================================
+
+  - src: DRILL
+    terms:
+      - {text: 드릴,   type: TRANSLATION, weight: 1.90}
+      - {text: 전동공구, type: CATEGORY_HINT, weight: 1.30}
+
+  - src: WRENCH
+    terms:
+      - {text: 렌치,   type: TRANSLATION, weight: 1.90}
+      - {text: 수공구, type: CATEGORY_HINT, weight: 1.20}
+
+  - src: TIRE
+    terms:
+      - {text: 타이어, type: TRANSLATION, weight: 2.00}
+
+  - src: TYRE
+    terms:
+      - {text: 타이어, type: TRANSLATION, weight: 2.00}
+
+  - src: WHEEL
+    terms:
+      - {text: 휠,     type: TRANSLATION, weight: 1.90}
+      - {text: 바퀴,   type: SYN,         weight: 1.40}
