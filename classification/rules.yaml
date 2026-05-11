@@ -1,0 +1,373 @@
+# =========================================================
+# CAIS 분류 Rule 정의 파일
+# =========================================================
+#
+# 형식 설명
+# ---------
+# - id           : Rule 고유 식별자 (영문_소문자)
+# - priority     : 낮을수록 먼저 적용 (우선순위 높음)
+# - keywords_all : 토큰이 모두 포함돼야 매칭 (AND 조건)
+# - keywords_any : 토큰 중 하나라도 포함되면 매칭 (OR 조건)
+# - category_path: 카테고리 경로 (대분류 / 중분류 / 소분류)
+# - confidence   : 기본 신뢰도 (0~1)
+# - rationale    : 분류 근거 설명
+#
+# ──────────────────────────────────────────
+# 라벨 추가 기준
+# ──────────────────────────────────────────
+# 1. 동일 물품 5건 이상 미분류(fallback) 상태 발생 시 Rule 추가
+# 2. keywords_all (AND)은 구체적 물품, keywords_any (OR)은 포괄 키워드에 사용
+# 3. 더 구체적인 Rule을 낮은 priority(숫자)로 배치 → 먼저 매칭
+# 4. OpenAI 동일 분류 제안 3건 이상 & confidence ≥ 0.85 → Rule 승격 검토
+# 5. 폐기 기준: 최근 6개월 해당 카테고리 물품 0건
+# ──────────────────────────────────────────
+
+rules:
+
+  # =======================================================
+  # 식품·음료
+  # =======================================================
+
+  # =======================================================
+  # 의류·패션잡화
+  # =======================================================
+
+  - id: clothing_fabric_woven
+    priority: 3
+    keywords_any: [WOVEN, FABRIC, FABRICS, TEXTILE, YARN, KNIT, KNITTED, LINEN, COTTON, DENIM]
+    keywords_all: []
+    category_path: [의류·패션잡화]
+    confidence: 0.85
+    rationale: "직물·원단 키워드 — 평가셋 추가 (WOVEN FABRICS OF COTTON)"
+
+  - id: clothing_garment
+    priority: 4
+    keywords_any: [SHIRT, TSHIRT, PANTS, JACKET, VEST, DRESS, SKIRT, COAT, SNEAKER, SHOE, SHOES, BOOTS, FLAT, LOAFER, RESHGUARD]
+    keywords_all: []
+    category_path: [의류·패션잡화]
+    confidence: 0.88
+    rationale: "의류·신발 키워드 — 평가셋 추가 (T SHIRT, FLAT SHOE, SNEAKER 등)"
+
+  # =======================================================
+  # 식품·음료
+  # =======================================================
+
+  - id: food_vegetable_dried
+    priority: 7
+    keywords_any: [PEPPER, PAPRIKA, GARLIC, GINGER, DRIED, CHILI, SPICE, SPICES]
+    keywords_all: []
+    category_path: [식품·음료, 식품, 가공식품]
+    confidence: 0.85
+    rationale: "건조 채소·향신료 키워드 — 평가셋 추가 (DRIED RED PEPPER)"
+
+  - id: alcohol_more
+    priority: 5
+    keywords_any: [SAKE, TEQUILA, LIQUEUR, COCKTAIL, WHISKIES, COCKTAILS]
+    keywords_all: []
+    category_path: [식품·음료, 음료, 주류]
+    confidence: 0.90
+    rationale: "확장 주류 키워드 (SAKE/TEQUILA 등)"
+
+  - id: alcohol_cheongju
+    priority: 6
+    keywords_any: []
+    keywords_all: [CHEONG, JU]
+    category_path: [식품·음료, 음료, 주류]
+    confidence: 0.85
+    rationale: "청주(CHEONG + JU) 두 토큰 동시 포함"
+
+  - id: alcohol_wine
+    priority: 10
+    keywords_any: [WINE, WHISKY, WHISKEY, VODKA, BEER, RUM, GIN, CHAMPAGNE]
+    keywords_all: []
+    category_path: [식품·음료, 음료, 주류]
+    confidence: 0.88
+    rationale: "주류 대표 키워드 (WINE/WHISKY 등)"
+
+  # =======================================================
+  # 부품·소모품
+  # =======================================================
+
+  - id: battery_lithium
+    priority: 20
+    keywords_any: [LITHIUM, LIION, LI-ION, LIPO, LI-PO]
+    keywords_all: [BATTERY]
+    category_path: [부품·소모품, 배터리·전지, 리튬배터리]
+    confidence: 0.90
+    rationale: "리튬 계열 + BATTERY 동시 포함"
+
+  - id: battery_general
+    priority: 21
+    keywords_any: [BATTERY, CELL]
+    keywords_all: []
+    category_path: [부품·소모품, 배터리·전지, 일반 배터리]
+    confidence: 0.82
+    rationale: "일반 배터리 키워드"
+
+  - id: chem_calcium_chloride
+    priority: 25
+    keywords_any: []
+    keywords_all: [CALCIUM, CHLORIDE]
+    category_path: [부품·소모품, 화학·오일·윤활, 화학물질]
+    confidence: 0.82
+    rationale: "CALCIUM + CHLORIDE 동시 포함 → 화학물질"
+
+  # =======================================================
+  # 산업·장비 — 계측·시험
+  # =======================================================
+
+  - id: industry_detector
+    priority: 30
+    keywords_any: [DETECTOR, DETECTION]
+    keywords_all: []
+    category_path: [산업·장비, 계측·시험, 시험·검사장비]
+    confidence: 0.80
+    rationale: "탐지기/검출기 키워드"
+
+  - id: industry_meter_gauges_plural
+    priority: 31
+    keywords_any: [GAUGES, METERS]
+    keywords_all: []
+    category_path: [산업·장비, 계측·시험, 측정기기]
+    confidence: 0.86
+    rationale: "복수형 측정기기 (GAUGES/METERS)"
+
+  - id: industry_meter_gauge
+    priority: 32
+    keywords_any: [GAUGE, METER, CALIBRATOR, INDICATOR]
+    keywords_all: []
+    category_path: [산업·장비, 계측·시험, 측정기기]
+    confidence: 0.86
+    rationale: "측정기기 키워드 (GAUGE/METER 등)"
+
+  - id: industry_sensor_instrument
+    priority: 33
+    keywords_any: [SENSOR, TRANSMITTER, INSTRUMENT, INSTRUMENTATION]
+    keywords_all: []
+    category_path: [산업·장비, 계측·시험, 센서·계측]
+    confidence: 0.84
+    rationale: "센서/계측기 키워드"
+
+  - id: industry_test_inspection
+    priority: 34
+    keywords_any: [TEST, TESTER, INSPECTION, ANALYZER, ANALYSER]
+    keywords_all: []
+    category_path: [산업·장비, 계측·시험, 시험·검사장비]
+    confidence: 0.83
+    rationale: "시험·검사장비 키워드"
+
+  # =======================================================
+  # 산업·장비 — 유체·배관
+  # =======================================================
+
+  - id: industry_pump
+    priority: 40
+    keywords_any: [PUMP]
+    keywords_all: []
+    category_path: [산업·장비, 유체·배관, 펌프]
+    confidence: 0.83
+    rationale: "펌프 키워드"
+
+  - id: industry_valve
+    priority: 41
+    keywords_any: [VALVE]
+    keywords_all: []
+    category_path: [산업·장비, 유체·배관, 밸브]
+    confidence: 0.83
+    rationale: "밸브 키워드"
+
+  - id: industry_pipe_fitting
+    priority: 42
+    keywords_any: [PIPE, PIPES, FITTING, FITTINGS, FLANGE]
+    keywords_all: []
+    category_path: [산업·장비, 유체·배관, 배관·피팅]
+    confidence: 0.80
+    rationale: "배관·피팅 키워드"
+
+  # =======================================================
+  # 전자·전기
+  # =======================================================
+
+  - id: electronic_cable_connector
+    priority: 50
+    keywords_any: [CABLE, CONNECTOR, HARNESS]
+    keywords_all: []
+    category_path: [전자·전기, 전자부품, 커넥터·케이블]
+    confidence: 0.80
+    rationale: "커넥터·케이블 키워드"
+
+  - id: electronic_pcb_module
+    priority: 51
+    keywords_any: [PCB, BOARD, MODULE]
+    keywords_all: []
+    category_path: [전자·전기, 전자부품, PCB·모듈]
+    confidence: 0.80
+    rationale: "PCB·모듈 키워드"
+
+  - id: electrical_breaker_fuse
+    priority: 52
+    keywords_any: [BREAKER, FUSE]
+    keywords_all: []
+    category_path: [전자·전기, 전기부품, 차단기·퓨즈]
+    confidence: 0.79
+    rationale: "차단기·퓨즈 키워드"
+
+  - id: electrical_switch_relay
+    priority: 53
+    keywords_any: [SWITCH, RELAY]
+    keywords_all: []
+    category_path: [전자·전기, 전기부품, 스위치·릴레이]
+    confidence: 0.79
+    rationale: "스위치·릴레이 키워드"
+
+  - id: power_supply
+    priority: 54
+    keywords_any: [POWER, SUPPLY, ADAPTER, CHARGER]
+    keywords_all: []
+    category_path: [전자·전기, 전원·변환, 전원공급장치]
+    confidence: 0.75
+    rationale: "전원공급장치 키워드"
+
+  # =======================================================
+  # 컴퓨터·모바일
+  # =======================================================
+
+  - id: wearable_smart_glasses
+    priority: 60
+    keywords_any: [AR, VR]
+    keywords_all: [SMART, GLASSES]
+    category_path: [컴퓨터·모바일, 모바일, 액세서리]
+    confidence: 0.78
+    rationale: "AR/VR + SMART + GLASSES → 스마트 안경"
+
+  - id: computer_server
+    priority: 61
+    keywords_any: [SERVER, DESKTOP, PC, WORKSTATION]
+    keywords_all: []
+    category_path: [컴퓨터·모바일, 컴퓨터, 본체·서버]
+    confidence: 0.78
+    rationale: "서버·데스크탑 키워드"
+
+  - id: computer_peripherals
+    priority: 62
+    keywords_any: [MONITOR, KEYBOARD, MOUSE, PRINTER]
+    keywords_all: []
+    category_path: [컴퓨터·모바일, 컴퓨터, 주변기기]
+    confidence: 0.76
+    rationale: "컴퓨터 주변기기 키워드"
+
+  - id: mobile_phone_tablet
+    priority: 63
+    keywords_any: [PHONE, SMARTPHONE, TABLET, IPAD, IPHONE]
+    keywords_all: []
+    category_path: [컴퓨터·모바일, 모바일, 스마트폰·태블릿]
+    confidence: 0.78
+    rationale: "스마트폰·태블릿 키워드"
+
+  - id: storage
+    priority: 64
+    keywords_any: [SSD, HDD, NVME, RAM, MEMORY]
+    keywords_all: []
+    category_path: [컴퓨터·모바일, 저장장치, HDD·SSD·메모리]
+    confidence: 0.77
+    rationale: "저장장치 키워드"
+
+  # =======================================================
+  # 자동차·공구
+  # =======================================================
+
+  - id: auto_air_conditioning_installation
+    priority: 70
+    keywords_any: [UNIT, INSTALLATION]
+    keywords_all: [AIR, CONDITIONING]
+    category_path: [자동차·공구, 자동차부품, 냉난방·에어컨]
+    confidence: 0.82
+    rationale: "AIR + CONDITIONING + UNIT/INSTALLATION → 차량 에어컨"
+
+  - id: auto_tire_wheel
+    priority: 71
+    keywords_any: [TIRE, TYRE, WHEEL]
+    keywords_all: []
+    category_path: [자동차·공구, 자동차부품, 타이어·휠]
+    confidence: 0.78
+    rationale: "타이어·휠 키워드"
+
+  - id: tools_power
+    priority: 72
+    keywords_any: [DRILL, GRINDER, SAW]
+    keywords_all: []
+    category_path: [자동차·공구, 공구, 전동공구]
+    confidence: 0.76
+    rationale: "전동공구 키워드"
+
+  - id: tools_hand
+    priority: 73
+    keywords_any: [WRENCH, SPANNER, TOOL]
+    keywords_all: []
+    category_path: [자동차·공구, 공구, 수공구]
+    confidence: 0.72
+    rationale: "수공구 키워드"
+
+  # =======================================================
+  # 스포츠·레저
+  # =======================================================
+
+  - id: hobby_instrument_guitar
+    priority: 80
+    keywords_any: [GUITAR]
+    keywords_all: []
+    category_path: [스포츠·레저, 취미·악기, 악기]
+    confidence: 0.80
+    rationale: "기타(악기) 키워드"
+
+  - id: sports_treadmill
+    priority: 80
+    keywords_any: [TREADMILL]
+    keywords_all: []
+    category_path: [스포츠·레저, 운동기구, 러닝머신]
+    confidence: 0.92
+    rationale: "트레드밀(런닝머신) 키워드 — 평가셋 오분류 수정 (SPORTS EQUIPMENT TREADMILL)"
+
+  - id: sports_swim_tube
+    priority: 81
+    keywords_any: [SWIM, TUBE, FLOAT]
+    keywords_all: []
+    category_path: [스포츠·레저, 수영·물놀이, 풀·물놀이 용품]
+    confidence: 0.85
+    rationale: "수영·물놀이 용품 키워드 — 평가셋 오분류 수정 (SWIM TUBE)"
+
+  - id: sports_pool_accessories
+    priority: 82
+    keywords_any: [POOL, INFLATABLE, FLOATING, MAT]
+    keywords_all: []
+    category_path: [스포츠·레저, 수영·물놀이, 풀·물놀이 용품]
+    confidence: 0.78
+    rationale: "수영·물놀이 용품 키워드"
+
+  - id: sports_balloon_toy
+    priority: 83
+    keywords_any: [BALLOON, FOIL]
+    keywords_all: []
+    category_path: [스포츠·레저, 취미·악기, 완구]
+    confidence: 0.80
+    rationale: "풍선·완구 키워드 — 평가셋 오분류 수정 (BALLOON HOLDER → 완구)"
+
+  # =======================================================
+  # 가전
+  # =======================================================
+
+  - id: appliance_refrigerator
+    priority: 90
+    keywords_any: [REFRIGERATOR, REFRIGERATORS, FRIDGE]
+    keywords_all: []
+    category_path: [가전, 주방가전, 냉장고]
+    confidence: 0.93
+    rationale: "냉장고 키워드 — 평가셋 오분류 수정 (REFRIGERATORS → 냉장고, 공기·냉난방 아님)"
+
+  - id: kitchen_beverage_icecream_relaxed
+    priority: 91
+    keywords_any: [BEVERAGE, ICE, CREAM, ICECREAM, MAKER, MAKERS, MACHINE]
+    keywords_all: []
+    category_path: [가전, 주방가전, 커피·음료기기]
+    confidence: 0.78
+    rationale: "음료·아이스크림 메이커 키워드"
