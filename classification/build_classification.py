@@ -1,12 +1,20 @@
 import argparse
+import io
 import json
 import os
 import re
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
 import pymysql
+import yaml
+
+# Windows 콘솔 UTF-8 출력
+if sys.stdout.encoding and sys.stdout.encoding.lower() not in ("utf-8", "utf8"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 
 # =========================================================
@@ -156,8 +164,42 @@ class Rule:
     rationale_hint: str                # 근거 텍스트
 
 
-def build_rules() -> List[Rule]:
-    # 산업·장비 중심 (요청 반영)
+def build_rules(rules_path: Optional[str] = None) -> List[Rule]:
+    """
+    rules.yaml을 읽어 Rule 목록을 반환합니다.
+    파일이 없거나 yaml 패키지가 없으면 하드코딩 fallback을 사용합니다.
+
+    rules.yaml 위치 우선순위:
+      1. rules_path 인수
+      2. 이 스크립트와 같은 디렉터리의 rules.yaml
+      3. 하드코딩 fallback
+    """
+    if rules_path is None:
+        rules_path = str(Path(__file__).parent / "rules.yaml")
+
+    try:
+        with open(rules_path, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        rules: List[Rule] = []
+        for r in sorted(data.get("rules", []), key=lambda x: x.get("priority", 999)):
+            rules.append(
+                Rule(
+                    name=r["id"],
+                    keywords_any=set(r.get("keywords_any") or []),
+                    keywords_all=set(r.get("keywords_all") or []),
+                    category_path=r["category_path"],
+                    base_conf=float(r.get("confidence", 0.80)),
+                    rationale_hint=r.get("rationale", ""),
+                )
+            )
+        print(f"ℹ️ rules.yaml 로드: {len(rules)}개 Rule ({rules_path})")
+        return rules
+    except FileNotFoundError:
+        print(f"⚠️ rules.yaml 없음 ({rules_path}) → 하드코딩 fallback 사용")
+    except Exception as e:
+        print(f"⚠️ rules.yaml 로드 실패 ({e}) → 하드코딩 fallback 사용")
+
+    # ── 하드코딩 fallback (rules.yaml 없을 때) ──────────────────────────────
     return [
         # === 식품·음료: 주류 ===
         Rule(
@@ -442,8 +484,7 @@ def build_rules() -> List[Rule]:
             base_conf=0.78,
             rationale_hint="beverage/ice-cream maker keyword match (relaxed)",
         ),
-
-    ]
+    ]  # end hardcoded fallback
 
 
 def match_rule(tokens: Set[str], rules: List[Rule]) -> Optional[Tuple[Rule, Set[str]]]:
@@ -677,6 +718,15 @@ class OpenAIClassifier:
         return True
 
     def classify(self, cmdt_nm: str, raw_tokens: Set[str]) -> Optional[LLMClassification]:
+        """
+        OpenAI API로 물품명 분류.
+
+        설계서(CLASSIFICATION_LOGIC_DESIGN.md) §5 기준:
+        - 시스템 프롬프트: 분류 절차 4단계 명시
+        - 사용자 프롬프트: extracted_keywords + candidate_categories 포함
+        - 출력: category_path / confidence / matched_keywords / reason / alternative
+        - 재시도: JSON 파싱 실패 시 1회 재시도
+        """
         if not self.enabled:
             return None
 
@@ -684,50 +734,108 @@ class OpenAIClassifier:
         if not allowed_paths:
             return None
 
+        # ── 시스템 프롬프트 (설계서 §5-2) ────────────────────────────────
         sys_prompt = (
-            "당신은 공매 물품명 분류기다. 주어진 물품명을 허용 카테고리 목록 중 정확히 하나로 분류하라. "
-            "반드시 JSON으로만 응답하라."
+            "당신은 세관 공매 물품 자동 분류 전문가입니다.\n"
+            "주어진 영문 물품명을 분석하여 제공된 카테고리 목록 중 정확히 하나로 분류하세요.\n\n"
+            "분류 절차:\n"
+            "1. 물품명의 핵심 명사/형용사 키워드를 추출하세요\n"
+            "2. 추출한 키워드와 카테고리명을 비교하여 가장 적합한 경로를 선택하세요\n"
+            "3. 확신도(confidence)를 0~1 사이로 평가하세요:\n"
+            "   - 0.85 이상: 키워드가 카테고리와 명확히 일치\n"
+            "   - 0.70~0.84: 맥락상 합리적이나 다른 해석 가능\n"
+            "   - 0.70 미만: 불확실 → alternative에 차선 경로 기재\n"
+            "4. category_path는 반드시 candidate_categories 목록 중 하나여야 합니다\n\n"
+            "반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 절대 포함하지 마세요."
         )
+
+        # ── 사용자 프롬프트 (설계서 §5-3) ────────────────────────────────
+        # candidate_categories: 전체 목록 대신 토큰과 이름이 겹치는 경로 우선 상위 20개
+        token_upper = {t.upper() for t in raw_tokens}
+        def path_relevance(p: List[str]) -> int:
+            joined = " ".join(p).upper()
+            return sum(1 for t in token_upper if t in joined)
+
+        scored = sorted(allowed_paths, key=lambda p: path_relevance(p.split(" > ")), reverse=True)
+        candidate_paths = scored[:20] if len(scored) > 20 else scored
+
         user_prompt = {
             "item_name": cmdt_nm,
-            "raw_tokens": sorted(raw_tokens),
-            "allowed_category_paths": allowed_paths,
+            "extracted_keywords": sorted(raw_tokens),
+            "candidate_categories": candidate_paths,
             "output_schema": {
                 "category_path": ["대분류", "중분류", "소분류"],
-                "confidence": "0~1 실수",
-                "rationale": "짧은 근거",
+                "confidence": "0.0~1.0 실수",
+                "matched_keywords": ["분류 근거가 된 키워드 목록"],
+                "reason": "한 줄 근거 (매칭된 키워드 반드시 포함)",
+                "alternative": "확신도 낮을 때 차선 카테고리 경로 문자열, 없으면 null",
             },
-            "rules": [
-                "category_path는 반드시 allowed_category_paths 중 하나여야 함",
-                "확신이 낮으면 confidence를 0.55~0.70 범위로 보수적으로 반환",
-            ],
         }
 
-        try:
-            resp = self._create_completion(sys_prompt, user_prompt)
-            content = resp.choices[0].message.content or "{}"
-            parsed = json.loads(content)
-        except Exception as e:
-            if self._disable_on_quota_error(e):
+        # ── API 호출 (실패 시 1회 재시도) ────────────────────────────────
+        parsed = None
+        for attempt in range(2):
+            try:
+                resp = self._create_completion(sys_prompt, user_prompt)
+                content = (resp.choices[0].message.content or "{}").strip()
+                # JSON 블록 감싸진 경우 처리 (```json ... ```)
+                if content.startswith("```"):
+                    content = content.split("```")[1]
+                    if content.startswith("json"):
+                        content = content[4:]
+                parsed = json.loads(content)
+                break
+            except json.JSONDecodeError as e:
+                if attempt == 0:
+                    print(f"⚠️ OpenAI JSON 파싱 실패 (1차), 재시도: {e}")
+                    continue
+                print(f"⚠️ OpenAI JSON 파싱 실패 (2차), 포기: {e}")
                 return None
-            print(f"⚠️ OpenAI classification failed: {e}")
+            except Exception as e:
+                if self._disable_on_quota_error(e):
+                    return None
+                print(f"⚠️ OpenAI classification failed: {e}")
+                return None
+
+        if parsed is None:
             return None
 
+        # ── 응답 파싱 ─────────────────────────────────────────────────────
         path = parsed.get("category_path") or []
         raw_confidence = parsed.get("confidence", 0.0)
+        matched_kws = parsed.get("matched_keywords") or []
+        reason = str(parsed.get("reason") or "openai classification")
+        alternative = parsed.get("alternative")
+
         try:
             confidence = float(raw_confidence or 0.0)
         except (TypeError, ValueError):
-            print(f"⚠️ OpenAI classification failed: invalid confidence={raw_confidence!r}")
+            print(f"⚠️ invalid confidence={raw_confidence!r}")
             return None
-        rationale = str(parsed.get("rationale", "openai classification"))
 
         if not isinstance(path, list) or not path:
             return None
 
         normalized = [str(x).strip() for x in path if str(x).strip()]
-        if " > ".join(normalized) not in allowed_paths:
-            return None
+        path_str = " > ".join(normalized)
+        if path_str not in allowed_paths:
+            # 허용 경로에 없으면 alternative 시도
+            if alternative and isinstance(alternative, str):
+                alt_parts = [p.strip() for p in alternative.split(">") if p.strip()]
+                if " > ".join(alt_parts) in allowed_paths:
+                    normalized = alt_parts
+                    confidence = max(0.55, confidence - 0.10)
+                    reason = f"[alt] {reason}"
+                else:
+                    return None
+            else:
+                return None
+
+        # 근거에 matched_keywords 포함
+        if matched_kws:
+            rationale = f"{reason} | matched={sorted(matched_kws)}"
+        else:
+            rationale = reason
 
         confidence = max(0.0, min(0.99, confidence))
         return LLMClassification(
@@ -751,6 +859,17 @@ def main():
         action="store_true",
         help="Fail fast when --use-openai is set but OpenAI client cannot be initialized",
     )
+    parser.add_argument(
+        "--rules-file",
+        type=str,
+        default=None,
+        help="rules.yaml 경로 (기본: classification/rules.yaml)",
+    )
+    parser.add_argument(
+        "--rule-only-update",
+        action="store_true",
+        help="Rule 매칭된 물품만 DB 업데이트. 미매칭 시 기존 분류 결과 유지 (OpenAI 결과 보호)",
+    )
     args = parser.parse_args()
 
     try:
@@ -771,7 +890,7 @@ def main():
             ) from e
         raise
 
-    rules = build_rules()
+    rules = build_rules(args.rules_file)
 
     processed = 0
     classified = 0
@@ -831,6 +950,8 @@ def main():
                 m = match_rule(raw_tokens, rules)
                 model_name = "rule"
                 model_ver = args.model_ver
+                rule_matched = False
+
                 if m:
                     rule, matched_keywords = m
                     cid = resolver.resolve_path(rule.category_path)
@@ -845,6 +966,7 @@ def main():
                         conf = min(0.99, rule.base_conf + 0.02 * max(0, len(matched_keywords) - 1))
                         rationale = f"[{rule.name}] {rule.rationale_hint} | matched={sorted(matched_keywords)}"
                         classified += 1
+                        rule_matched = True
                 else:
                     llm_result = llm_classifier.classify(cmdt_nm, raw_tokens) if llm_classifier else None
                     if llm_result:
@@ -866,8 +988,11 @@ def main():
                         rationale = "[fallback] no rule matched"
                         fallbacked += 1
 
+                # --rule-only-update: Rule 미매칭 시 기존 분류 결과 보존
+                skip_write = args.rule_only_update and not rule_matched
+
                 # --- write classification
-                if not args.dry_run:
+                if not args.dry_run and not skip_write:
                     cur.execute(
                         SQL_UPSERT_CLASSIFICATION,
                         (
@@ -914,7 +1039,7 @@ def main():
                     if key not in best or w > best[key]:
                         best[key] = w
 
-                if not args.dry_run:
+                if not args.dry_run and not skip_write:
                     # 🔥 이전 실행에서 남아있던 CATEGORY 토큰을 먼저 제거 (핵심)
                     cur.execute(
                         """
