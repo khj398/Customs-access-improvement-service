@@ -344,8 +344,24 @@ rules:
     confidence: 0.78
     rationale: "수영·물놀이 용품 키워드"
 
+  - id: sports_balloon_pump
+    priority: 15
+    keywords_any: [PUMP, INFLATION, INFLATOR]
+    keywords_all: [BALLOON]
+    category_path: [스포츠·레저, 취미·악기, 완구]
+    confidence: 0.83
+    rationale: "BALLOON + PUMP/INFLATION → 풍선 전용 공기펌프 (완구 accessories) — electric balloon pump / hand pump 오분류 수정"
+
+  - id: sports_toy_general
+    priority: 84
+    keywords_any: [TOY, TOYS, ERASER, GAME, PUZZLE, DOLL, FIGURINE]
+    keywords_all: []
+    category_path: [스포츠·레저, 취미·악기, 완구]
+    confidence: 0.78
+    rationale: "완구 일반 키워드 — OTHER TOY / ERASER PANDA 오분류 수정"
+
   - id: sports_balloon_toy
-    priority: 83
+    priority: 85
     keywords_any: [BALLOON, FOIL]
     keywords_all: []
     category_path: [스포츠·레저, 취미·악기, 완구]
