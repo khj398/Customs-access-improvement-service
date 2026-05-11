@@ -98,6 +98,23 @@ score DESC → 물품 A 상단 노출
 
 ## 5. API 명세
 
+### 5-0. 전체 엔드포인트 목록
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/health` | 서버 상태 |
+| GET | `/db/health` | DB 연결 상태 |
+| GET | `/search` | 토큰 기반 검색 (핵심) |
+| GET | `/search/autocomplete` | 자동완성 후보어 |
+| GET | `/search/filters` | 필터 패널 옵션 (세관·카테고리) |
+| GET | `/items` | 전체 목록 (기존 호환) |
+| GET | `/items/{…}/images` | 물품 이미지 |
+| GET | `/stats` | 전체 물품·분류 현황 통계 |
+| GET | `/stats/categories` | 카테고리별 물품 분포 |
+| GET | `/stats/pipeline` | 파이프라인 실행 이력 |
+
+---
+
 ### 5-1. `GET /search` — 핵심 검색
 
 **요청 파라미터**
@@ -175,6 +192,77 @@ score DESC → 물품 A 상단 노출
 
 ---
 
+### 5-4. `GET /stats` — 데이터 현황 통계
+
+전체 물품·분류 현황을 모니터링 대시보드에 사용.
+
+**응답 예시**
+
+```json
+{
+  "total_items": 93,
+  "classified": 93,
+  "unclassified": 0,
+  "classification_rate": 100.0,
+  "by_source": {
+    "rule": 71,
+    "openai": 22
+  },
+  "recent_7days": {
+    "new_items": 5,
+    "change_events": 3
+  }
+}
+```
+
+---
+
+### 5-5. `GET /stats/categories` — 카테고리별 물품 분포
+
+**파라미터**: `limit` (1~100, 기본 20)
+
+**응답 예시**
+
+```json
+{
+  "categories": [
+    { "top_category": "생활·주방", "mid_category": "주방·식탁", "item_count": 30 },
+    { "top_category": "기타",      "mid_category": "미분류",   "item_count": 22 },
+    { "top_category": "의류·패션잡화", "mid_category": null,   "item_count": 16 }
+  ],
+  "total_shown": 3
+}
+```
+
+---
+
+### 5-6. `GET /stats/pipeline` — 파이프라인 실행 이력
+
+**파라미터**: `limit` (1~50, 기본 10)
+
+`ingestion_run` 테이블의 최근 실행 이력을 반환합니다.
+
+```json
+{
+  "runs": [
+    {
+      "ingestion_run_id": 14,
+      "source_name": "unipass_list_business",
+      "collector_source": "BUSINESS",
+      "status": "SUCCESS",
+      "raw_item_count": 93,
+      "upsert_count": 93,
+      "error_count": 0,
+      "started_at": "2026-03-12T00:42:06",
+      "finished_at": "2026-03-12T00:42:07",
+      "duration_sec": 1
+    }
+  ]
+}
+```
+
+---
+
 ## 6. 인덱스 전략
 
 ```sql
@@ -205,12 +293,71 @@ ALTER TABLE auction_item ADD INDEX idx_price (pbac_prng_prc);
 
 ---
 
-## 8. 향후 개선 계획
+## 8. 데이터 파이프라인 (STEP 4)
+
+### 8-1. 파이프라인 구성도
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                   데이터 수집 (크롤러)                          │
+│  project/AWSLambda/UNIPASS_LIST_Business.py                  │
+│  project/AWSLambda/UNIPASS_LIST_Personal.py                  │
+│         ↓ unipass_all_2b.json / unipass_all_2c.json          │
+└───────────────────────────┬──────────────────────────────────┘
+                            │
+┌───────────────────────────▼──────────────────────────────────┐
+│                   ETL (JSON → MySQL)                         │
+│  etl/load_unipass_to_mysql.py                                │
+│  → auction, auction_item, ingestion_run 테이블               │
+└───────────────────────────┬──────────────────────────────────┘
+                            │
+┌───────────────────────────▼──────────────────────────────────┐
+│              분류 & 검색 토큰 생성                              │
+│  classification/build_classification.py                      │
+│  → item_classification, item_search_token                    │
+└───────────────────────────┬──────────────────────────────────┘
+                            │
+┌───────────────────────────▼──────────────────────────────────┐
+│                   API 서비스                                   │
+│  backend/app.py  →  FastAPI on :8000                         │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### 8-2. 파이프라인 오케스트레이터 (`pipeline/run_pipeline.py`)
+
+ETL → 분류를 한 번에 실행하고 현황 리포트를 출력합니다.
+
+```bash
+# ETL + Rule 분류 (기본)
+python pipeline/run_pipeline.py
+
+# ETL + Rule + OpenAI fallback
+python pipeline/run_pipeline.py --use-openai
+
+# 분류만 (ETL 생략)
+python pipeline/run_pipeline.py --mode classify-only
+```
+
+### 8-3. 일일 자동 스케줄러 (`pipeline/scheduler.py`)
+
+```bash
+pip install schedule
+python pipeline/scheduler.py --time 02:00      # 매일 02:00 KST
+python pipeline/scheduler.py --run-now         # 즉시 실행 후 스케줄 유지
+```
+
+- 실행 이력: `logs/scheduler_YYYYMM.log`
+- GitHub Actions: `.github/workflows/daily_pipeline.yml` (매일 02:00 KST 자동 트리거)
+
+---
+
+## 9. 향후 개선 계획
 
 | 단계 | 내용 | 우선순위 |
 |------|------|---------|
 | 단기 | 오타 보정 (편집거리 1 허용) | 중 |
 | 단기 | "결과 없음" → 연관 검색어 제안 | 중 |
+| 단기 | 물품 수 200건+ 확대 (크롤러 주기 단축) | 높음 |
 | 중기 | Elasticsearch 도입 (Nori 형태소 분석) | 높음 |
 | 중기 | 개인화 검색 (최근 검색어 가중치) | 낮음 |
 | 장기 | 벡터 검색 (semantic similarity) | 낮음 |

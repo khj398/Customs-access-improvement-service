@@ -148,7 +148,64 @@ classification/rules.yaml
 
 ---
 
-## 5. OpenAI API 프롬프트 설계
+## 5. OpenAI 중분류 타겟 전략
+
+### 5-0. 왜 중분류(level-2)인가?
+
+세관 공매 물품은 영문 물품명만으로 **소분류(level-3)까지 정확히 판별하기 어려운 경우**가 많습니다.
+
+| 전략 | 장점 | 단점 |
+|------|------|------|
+| 소분류(level-3) 타겟 | 세밀한 분류 | 오분류 위험↑, OpenAI hallucination↑ |
+| **중분류(level-2) 타겟** ✅ | 안정적, 오분류↓ | 약간 덜 세밀 |
+| 대분류(level-1) 타겟 | 가장 안전 | 사용자 검색 효용↓ |
+
+**선택**: 중분류(level-2) 기본 적용.  
+Rule 기반 분류는 소분류까지 지정하며, OpenAI fallback은 중분류 27개 경로만 후보로 제공.
+
+### 5-1. 중분류 경로 목록 (`get_mid_paths()`)
+
+`CategoryResolver.get_mid_paths()`가 반환하는 27개 경로:
+
+```
+의류·패션잡화               (level-1 leaf)
+뷰티·위생                   (level-1 leaf)
+산업·장비 > 산업장비
+산업·장비 > 계측·시험
+산업·장비 > 유체·배관
+전자·전기 > 전자부품
+전자·전기 > 전기부품
+전자·전기 > 전원·변환
+컴퓨터·모바일 > 컴퓨터
+컴퓨터·모바일 > 모바일
+부품·소모품 > 배터리·전지
+식품·음료 > 음료
+식품·음료 > 식품
+자동차·공구 > 자동차부품
+자동차·공구 > 공구
+기타 > 미분류
+가전 > 주방가전
+가전 > 생활가전
+스포츠·레저 > 수영·물놀이
+스포츠·레저 > 취미·악기
+스포츠·레저 > 운동기구
+생활·주방 > 주방·식탁
+... (총 27개)
+```
+
+### 5-2. `--openai-target-level` 옵션
+
+```bash
+# 중분류까지 분류 (기본)
+python classification/build_classification.py --use-openai --openai-target-level 2
+
+# 소분류까지 분류 (정밀, 오분류 위험 있음)
+python classification/build_classification.py --use-openai --openai-target-level 3
+```
+
+---
+
+## 6. OpenAI API 프롬프트 설계
 
 ### 5-1. 개선 전 문제점
 
@@ -211,7 +268,22 @@ classification/rules.yaml
 
 ---
 
-## 6. 신뢰도(Confidence) 기준표
+### 6-3. `기타 > 미분류` 가이드 (시스템 프롬프트 step 6)
+
+오분류를 막기 위해 시스템 프롬프트에 아래 지시가 포함됩니다:
+
+```
+6. [중요] 어떤 카테고리에도 명확히 속하지 않는 물품(장식품·잡화·불명 물품 등)은
+   억지로 관련 없는 카테고리에 배치하지 말고 반드시 '기타 > 미분류'를 선택하고
+   confidence를 0.60 이하로 설정하세요.
+```
+
+**효과**: CLOSESTOOL(변기), EASTER EGG WOODEN DECORATION 같은 물품이
+부품·소모품이나 산업장비로 잘못 분류되는 문제 방지.
+
+---
+
+## 7. 신뢰도(Confidence) 기준표
 
 | 구간 | 의미 | 처리 방식 |
 |------|------|---------|
@@ -223,7 +295,7 @@ classification/rules.yaml
 
 ---
 
-## 7. 전체 분류 파이프라인 실행 방법
+## 8. 전체 분류 파이프라인 실행 방법
 
 ### 7-1. 기본 실행 (Rule only)
 
@@ -231,39 +303,53 @@ classification/rules.yaml
 python classification/build_classification.py
 ```
 
-### 7-2. OpenAI 보강 실행 (Rule 미매칭 물품에만 적용)
+### 8-2. OpenAI 보강 실행 (Rule 미매칭 물품에만 적용)
 
 ```bash
 # 환경변수 설정
 export OPENAI_API_KEY="sk-..."
 
-# Rule 미매칭 물품에 OpenAI 적용
+# Rule 미매칭 물품에 OpenAI 적용 (중분류 타겟, 기본값)
 python classification/build_classification.py --use-openai
 
-# 특정 rules.yaml 지정
-python classification/build_classification.py --use-openai --rules-file classification/rules.yaml
+# 소분류 타겟으로 변경
+python classification/build_classification.py --use-openai --openai-target-level 3
 
-# 테스트 (DB 기록 없이)
-python classification/build_classification.py --use-openai --dry-run --limit 10
+# Rule 매칭 물품만 업데이트 (OpenAI 결과 보존)
+python classification/build_classification.py --rule-only-update
 ```
 
-### 7-3. 재분류 (기존 분류 덮어쓰기)
+### 8-3. 파이프라인 오케스트레이터 사용 (권장)
+
+ETL + 분류를 한 번에 실행하는 통합 스크립트:
 
 ```bash
-# 전체 재분류 (UPSERT이므로 안전)
-python classification/build_classification.py --use-openai --model-ver "rule-v2"
+# ETL + Rule 분류
+python pipeline/run_pipeline.py
+
+# ETL + Rule + OpenAI fallback
+python pipeline/run_pipeline.py --use-openai
+
+# 분류만 (ETL 생략)
+python pipeline/run_pipeline.py --mode classify-only
+
+# 일일 자동 스케줄러 시작
+python pipeline/scheduler.py --time 02:00
 ```
 
-### 7-4. 정확도 평가
+### 8-4. 정확도 평가
 
 ```bash
 # 50건 평가셋 기준 정확도 측정
 python classification/eval/evaluate.py
+
+# 결과를 파일로 저장
+python classification/eval/evaluate.py --save
 ```
 
 ---
 
-## 8. 분류 결과 조회 쿼리
+## 9. 분류 결과 조회 쿼리
 
 ### 8-1. 분류 현황 요약
 
