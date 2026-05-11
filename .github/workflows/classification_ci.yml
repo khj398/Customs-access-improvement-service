@@ -1,0 +1,107 @@
+name: Classification CI
+
+# classification/ 변경 시마다 규칙 문법 + 동의어 사전 유효성 검사
+on:
+  push:
+    paths:
+      - "classification/rules.yaml"
+      - "classification/synonyms.yaml"
+      - "classification/build_classification.py"
+  pull_request:
+    paths:
+      - "classification/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Validate rules.yaml
+        run: |
+          python - <<'EOF'
+          import yaml, sys
+
+          with open("classification/rules.yaml", encoding="utf-8") as f:
+              data = yaml.safe_load(f)
+
+          rules = data.get("rules", [])
+          errors = []
+
+          for r in rules:
+              if not r.get("id"):
+                  errors.append(f"id 없는 규칙 발견: {r}")
+              if r.get("priority") is None:
+                  errors.append(f"[{r.get('id')}] priority 없음")
+              if not r.get("category_path"):
+                  errors.append(f"[{r.get('id')}] category_path 없음")
+              if not r.get("keywords_any") and not r.get("keywords_all"):
+                  errors.append(f"[{r.get('id')}] keywords_any, keywords_all 모두 비어 있음")
+
+          if errors:
+              print("❌ rules.yaml 유효성 오류:")
+              for e in errors:
+                  print(f"  - {e}")
+              sys.exit(1)
+
+          print(f"✅ rules.yaml 유효 — {len(rules)}개 규칙")
+          EOF
+
+      - name: Validate synonyms.yaml
+        run: |
+          python - <<'EOF'
+          import yaml, sys
+
+          with open("classification/synonyms.yaml", encoding="utf-8") as f:
+              data = yaml.safe_load(f)
+
+          synonyms = data.get("synonyms", [])
+          VALID_TYPES = {"SYN", "TRANSLATION", "BRAND", "MODEL", "CATEGORY_HINT"}
+          errors = []
+
+          for item in synonyms:
+              src = (item.get("src") or "").strip()
+              if not src:
+                  errors.append(f"src 없는 항목: {item}")
+                  continue
+              for t in item.get("terms", []):
+                  ttype = (t.get("type") or "SYN").upper()
+                  if ttype not in VALID_TYPES:
+                      errors.append(f"[{src}] 유효하지 않은 type: {ttype}")
+
+          if errors:
+              print("❌ synonyms.yaml 유효성 오류:")
+              for e in errors:
+                  print(f"  - {e}")
+              sys.exit(1)
+
+          print(f"✅ synonyms.yaml 유효 — {len(synonyms)}개 항목")
+          EOF
+
+      - name: Check duplicate rule IDs
+        run: |
+          python - <<'EOF'
+          import yaml, sys
+          from collections import Counter
+
+          with open("classification/rules.yaml", encoding="utf-8") as f:
+              data = yaml.safe_load(f)
+
+          ids = [r.get("id") for r in data.get("rules", []) if r.get("id")]
+          dup = [id_ for id_, cnt in Counter(ids).items() if cnt > 1]
+
+          if dup:
+              print(f"❌ 중복 Rule ID 발견: {dup}")
+              sys.exit(1)
+
+          print(f"✅ 중복 ID 없음 (총 {len(ids)}개)")
+          EOF
