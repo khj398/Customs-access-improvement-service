@@ -150,6 +150,36 @@ class CategoryResolver:
             paths.append(list(reversed(names_leaf_to_root)))
         return paths
 
+    def get_mid_paths(self) -> List[List[str]]:
+        """중분류(level-2) 노드까지만 경로를 반환.
+        - level-2 노드: 대분류 > 중분류 (2단계)
+        - level-1 leaf (중분류가 없는 대분류): 대분류 (1단계)
+        OpenAI 분류 목표를 소분류가 아닌 중분류로 제한할 때 사용.
+        """
+        # level-2 자녀를 가진 level-1 노드 ID 집합
+        level1_with_children = {
+            node.parent_id
+            for node in self.nodes.values()
+            if node.level == 2 and node.parent_id is not None
+        }
+        paths: List[List[str]] = []
+        seen: set = set()
+        for cid, node in sorted(self.nodes.items()):
+            if node.level == 2:
+                names = self.get_ancestors_names(cid)
+                path = list(reversed(names))
+                key = " > ".join(path)
+                if key not in seen:
+                    seen.add(key)
+                    paths.append(path)
+            elif node.level == 1 and cid not in level1_with_children:
+                # 중분류 없는 대분류 (의류·패션잡화, 뷰티·위생 등)
+                key = node.name_ko
+                if key not in seen:
+                    seen.add(key)
+                    paths.append([node.name_ko])
+        return paths
+
 
 # =========================================================
 # Rule-based 분류
@@ -622,14 +652,16 @@ class LLMClassification:
 
 
 class OpenAIClassifier:
-    def __init__(self, model_name: str, resolver: CategoryResolver):
+    def __init__(self, model_name: str, resolver: CategoryResolver, target_level: int = 2):
         self.model_name = model_name
         self.resolver = resolver
         self.client = None
         self.client_mode: Optional[str] = None
         self.init_error: Optional[str] = None
         self.disabled_reason: Optional[str] = None
-        self.leaf_paths = resolver.get_leaf_paths()
+        # target_level=2 → 중분류까지, target_level=3 → 소분류까지
+        self.target_level = target_level
+        self.leaf_paths = resolver.get_mid_paths() if target_level <= 2 else resolver.get_leaf_paths()
 
         api_key = os.getenv("OPENAI_API_KEY", "").strip()
         if not api_key:
@@ -734,23 +766,31 @@ class OpenAIClassifier:
         if not allowed_paths:
             return None
 
-        # ── 시스템 프롬프트 (설계서 §5-2) ────────────────────────────────
+        # ── 시스템 프롬프트 ────────────────────────────────────────────────
+        depth_guide = (
+            "대분류 또는 '대분류 > 중분류' 두 단계 경로"
+            if self.target_level <= 2
+            else "대분류 > 중분류 > 소분류 세 단계 경로"
+        )
         sys_prompt = (
             "당신은 세관 공매 물품 자동 분류 전문가입니다.\n"
             "주어진 영문 물품명을 분석하여 제공된 카테고리 목록 중 정확히 하나로 분류하세요.\n\n"
             "분류 절차:\n"
             "1. 물품명의 핵심 명사/형용사 키워드를 추출하세요\n"
             "2. 추출한 키워드와 카테고리명을 비교하여 가장 적합한 경로를 선택하세요\n"
-            "3. 확신도(confidence)를 0~1 사이로 평가하세요:\n"
+            f"3. 분류 깊이: {depth_guide}로 분류하세요\n"
+            "4. 확신도(confidence)를 0~1 사이로 평가하세요:\n"
             "   - 0.85 이상: 키워드가 카테고리와 명확히 일치\n"
             "   - 0.70~0.84: 맥락상 합리적이나 다른 해석 가능\n"
             "   - 0.70 미만: 불확실 → alternative에 차선 경로 기재\n"
-            "4. category_path는 반드시 candidate_categories 목록 중 하나여야 합니다\n\n"
+            "5. category_path는 반드시 candidate_categories 목록 중 하나여야 합니다\n"
+            "6. [중요] 어떤 카테고리에도 명확히 속하지 않는 물품(장식품·잡화·불명 물품 등)은\n"
+            "   억지로 관련 없는 카테고리에 배치하지 말고 반드시 '기타 > 미분류'를 선택하고\n"
+            "   confidence를 0.60 이하로 설정하세요.\n\n"
             "반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 절대 포함하지 마세요."
         )
 
-        # ── 사용자 프롬프트 (설계서 §5-3) ────────────────────────────────
-        # candidate_categories: 전체 목록 대신 토큰과 이름이 겹치는 경로 우선 상위 20개
+        # ── 사용자 프롬프트 ────────────────────────────────────────────────
         token_upper = {t.upper() for t in raw_tokens}
         def path_relevance(p: List[str]) -> int:
             joined = " ".join(p).upper()
@@ -759,12 +799,17 @@ class OpenAIClassifier:
         scored = sorted(allowed_paths, key=lambda p: path_relevance(p.split(" > ")), reverse=True)
         candidate_paths = scored[:20] if len(scored) > 20 else scored
 
+        depth_schema = (
+            ["대분류"] if self.target_level == 1
+            else ["대분류", "중분류"] if self.target_level <= 2
+            else ["대분류", "중분류", "소분류"]
+        )
         user_prompt = {
             "item_name": cmdt_nm,
             "extracted_keywords": sorted(raw_tokens),
             "candidate_categories": candidate_paths,
             "output_schema": {
-                "category_path": ["대분류", "중분류", "소분류"],
+                "category_path": depth_schema,
                 "confidence": "0.0~1.0 실수",
                 "matched_keywords": ["분류 근거가 된 키워드 목록"],
                 "reason": "한 줄 근거 (매칭된 키워드 반드시 포함)",
@@ -855,6 +900,10 @@ def main():
     parser.add_argument("--use-openai", action="store_true", help="Enable OpenAI fallback classifier")
     parser.add_argument("--openai-model", type=str, default="gpt-4o-mini", help="OpenAI model name")
     parser.add_argument(
+        "--openai-target-level", type=int, default=2, choices=[1, 2, 3],
+        help="OpenAI 분류 깊이: 1=대분류, 2=중분류(기본), 3=소분류",
+    )
+    parser.add_argument(
         "--strict-openai",
         action="store_true",
         help="Fail fast when --use-openai is set but OpenAI client cannot be initialized",
@@ -912,7 +961,10 @@ def main():
                     name_ko=r["name_ko"],
                 )
             resolver = CategoryResolver(nodes)
-            llm_classifier = OpenAIClassifier(args.openai_model, resolver) if args.use_openai else None
+            llm_classifier = (
+                OpenAIClassifier(args.openai_model, resolver, target_level=args.openai_target_level)
+                if args.use_openai else None
+            )
             if args.use_openai and llm_classifier and not llm_classifier.enabled:
                 msg = (
                     f"OpenAI fallback requested but unavailable: {llm_classifier.init_error or 'unknown reason'}"
