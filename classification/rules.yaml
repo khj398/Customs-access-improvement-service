@@ -387,3 +387,31 @@ rules:
     category_path: [가전, 주방가전, 커피·음료기기]
     confidence: 0.78
     rationale: "음료·아이스크림 메이커 키워드"
+
+  # =======================================================
+  # 생활·주방
+  # =======================================================
+
+  - id: kitchen_drinking_vessel
+    priority: 92
+    keywords_any: [GLASS, BOTTLE, JAR]
+    keywords_all: [DRINKING]
+    category_path: [생활·주방, 주방·식탁, 식기류]
+    confidence: 0.82
+    rationale: "DRINKING + GLASS/BOTTLE/JAR → 음용 식기 (GLASS DRINKING, BOTTLE DRINKING, DRINKING GLASS JAR)"
+
+  - id: kitchen_tableware
+    priority: 93
+    keywords_any: [PLATE, BOWL, MUG, CUP, TUMBLER, SPOON, FORK, CHOPSTICK, CHOPSTICKS, GOBLET]
+    keywords_all: []
+    category_path: [생활·주방, 주방·식탁, 식기류]
+    confidence: 0.80
+    rationale: "식기 키워드 — PLATE/BOWL/MUG/CUP/TUMBLER/SPOON 등"
+
+  - id: kitchen_utensil
+    priority: 94
+    keywords_any: [TRAY, JUG, TRIVET, COASTER, PLACEMAT]
+    keywords_all: []
+    category_path: [생활·주방, 주방·식탁, 주방용품]
+    confidence: 0.76
+    rationale: "주방용품 키워드 — TRAY/JUG/TRIVET/COASTER 등 (NAPKIN/TISSUE 제외 — 장식용 충돌 우려)"
