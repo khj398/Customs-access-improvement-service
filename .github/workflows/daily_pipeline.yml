@@ -16,6 +16,9 @@ on:
         required: false
         default: "full"
 
+permissions:
+  contents: write
+
 jobs:
   classify:
     name: 분류 파이프라인
