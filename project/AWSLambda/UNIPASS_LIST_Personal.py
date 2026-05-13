@@ -8,7 +8,7 @@ from playwright.sync_api import sync_playwright
 TMP_PATH = "./"
 
 # 설정
-HEADLESS = False
+HEADLESS = True
 KEYWORD = "retrievePbacCmdt.do"     
 TEMP_FILE_PREFIX = "c_temp_page_"
 FINAL_FILE = "unipass_all_2c.json" 

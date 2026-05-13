@@ -1,7 +1,7 @@
 name: Daily Pipeline (수동 트리거)
 
 # 매일 02:00 KST (UTC 17:00 전날) 자동 실행 + 수동 트리거 지원
-# ※ 크롤러(Playwright)는 로컬/Lambda에서 실행. CI에서는 분류 단계만 수행.
+# 수집(Playwright) → ETL → 분류 전 단계를 CI에서 실행.
 on:
   schedule:
     - cron: "0 17 * * *"   # 매일 02:00 KST
@@ -14,7 +14,7 @@ on:
       mode:
         description: "실행 모드 (full / classify-only / etl-only)"
         required: false
-        default: "classify-only"
+        default: "full"
 
 jobs:
   classify:
@@ -44,6 +44,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Python 설정
         uses: actions/setup-python@v5
@@ -52,7 +54,24 @@ jobs:
           cache: pip
 
       - name: 의존성 설치
-        run: pip install pymysql pyyaml openai mysql-connector-python
+        run: pip install pymysql pyyaml openai mysql-connector-python playwright
+
+      - name: Playwright 브라우저 설치
+        run: playwright install chromium --with-deps
+
+      - name: 경매 데이터 수집 (2b - 사업자)
+        run: python project/AWSLambda/UNIPASS_LIST_Business.py
+
+      - name: 경매 데이터 수집 (2c - 개인)
+        run: python project/AWSLambda/UNIPASS_LIST_Personal.py
+
+      - name: 수집 데이터 커밋
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add unipass_all_2b.json unipass_all_2c.json
+          git diff --staged --quiet || git commit -m "chore: 일일 경매 데이터 수집 [skip ci]"
+          git push
 
       - name: DB 스키마 초기화
         run: |
