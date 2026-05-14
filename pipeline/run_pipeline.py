@@ -12,6 +12,7 @@ ETL → 분류 → 통계 리포트를 순차 실행합니다.
 """
 
 import argparse
+import contextlib
 import io
 import os
 import subprocess
@@ -127,6 +128,26 @@ def print_stats():
         print(f"⚠️  통계 조회 실패: {exc}")
 
 
+def save_stats_report(path: Path, run_meta: dict):
+    """print_stats() 출력을 캡처해 accuracy_report.txt로 저장."""
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        header = (
+            f"CAIS 파이프라인 실행 리포트\n"
+            f"실행 시각 : {run_meta['started']:%Y-%m-%d %H:%M:%S}\n"
+            f"실행 모드 : {run_meta['mode']}"
+            + (" + OpenAI fallback" if run_meta.get("use_openai") else "")
+            + f"\n소요 시간 : {run_meta['elapsed']:.1f}초\n"
+        )
+        print(header)
+        print_stats()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(buf.getvalue(), encoding="utf-8")
+    # 파일 내용을 콘솔에도 출력
+    print(buf.getvalue())
+    print(f"📄 리포트 저장 완료: {path}")
+
+
 # ──────────────────────────────────────────────────────────────────────
 # 메인
 # ──────────────────────────────────────────────────────────────────────
@@ -195,7 +216,13 @@ def main():
     for step, ok in results.items():
         print(f"    {'✅' if ok else '❌'}  {step}")
 
-    print_stats()
+    report_path = ROOT / "classification" / "eval" / "accuracy_report.txt"
+    save_stats_report(report_path, {
+        "started": started,
+        "mode": args.mode,
+        "use_openai": args.use_openai,
+        "elapsed": elapsed,
+    })
     sys.exit(0 if all(results.values()) else 1)
 
 
