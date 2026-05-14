@@ -16,6 +16,9 @@ on:
         required: false
         default: "full"
 
+permissions:
+  contents: write
+
 jobs:
   classify:
     name: 분류 파이프라인
@@ -59,6 +62,16 @@ jobs:
       - name: Playwright 브라우저 설치
         run: playwright install chromium --with-deps
 
+      - name: 이전 수집 데이터 백업
+        uses: actions/upload-artifact@v4
+        with:
+          name: raw-data-backup-${{ github.run_number }}
+          path: |
+            unipass_all_2b.json
+            unipass_all_2c.json
+          retention-days: 90
+          if-no-files-found: ignore
+
       - name: 경매 데이터 수집 (2b - 사업자)
         run: python project/AWSLambda/UNIPASS_LIST_Business.py
 
@@ -86,7 +99,7 @@ jobs:
 
       - name: 파이프라인 실행
         run: |
-          MODE="${{ github.event.inputs.mode || 'classify-only' }}"
+          MODE="${{ github.event.inputs.mode || 'full' }}"
           USE_OPENAI="${{ github.event.inputs.use_openai || 'false' }}"
           CMD="python pipeline/run_pipeline.py --mode $MODE"
           if [ "$USE_OPENAI" = "true" ]; then
