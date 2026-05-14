@@ -18,7 +18,7 @@ def build_db_config() -> dict[str, Any]:
         "host": os.getenv("MYSQL_HOST", "127.0.0.1"),
         "port": int(os.getenv("MYSQL_PORT", "3306")),
         "user": os.getenv("MYSQL_USER", "root"),
-        "password": os.getenv("MYSQL_PASSWORD", "password"),
+        "password": os.getenv("MYSQL_PASSWORD", "Staver12^^"),
         "database": os.getenv("MYSQL_DATABASE", "customs_auction"),
         "charset": "utf8mb4",
         "cursorclass": pymysql.cursors.DictCursor,
