@@ -502,6 +502,7 @@ def run_source(conn, source: DataSource) -> tuple[int, int, int]:
     auction_cnt = 0
     item_cnt = 0
     error_cnt = 0
+    null_cstm_cnt = 0
 
     try:
         with conn.cursor() as cur:
@@ -533,6 +534,8 @@ def run_source(conn, source: DataSource) -> tuple[int, int, int]:
                 # ---- 마스터 적재 ----
                 cstm_sgn = as_str(r.get("pbacCstmSgn"))
                 cstm_nm = as_str(r.get("pbacCstmSgnNm"))
+                if not cstm_sgn:
+                    null_cstm_cnt += 1
                 if cstm_sgn and cstm_nm:
                     cur.execute(SQL_UPSERT_CUSTOMS, (cstm_sgn, cstm_nm))
 
@@ -585,7 +588,7 @@ def run_source(conn, source: DataSource) -> tuple[int, int, int]:
                         pbac_srno,
                         cmdt_ln_no,
                         ensure_cmdt_name(r, pbac_no, pbac_srno, cmdt_ln_no),
-                        as_int(r.get("cmdtQty")),
+                        as_float(r.get("cmdtQty")),
                         qty_unit,
                         as_float(r.get("cmdtWght")),
                         wght_unit,
@@ -646,6 +649,8 @@ def run_source(conn, source: DataSource) -> tuple[int, int, int]:
             cur.execute(SQL_FINISH_INGESTION_RUN, (final_status, item_cnt, error_cnt, None, ingestion_run_id))
 
         conn.commit()
+        if null_cstm_cnt:
+            print(f"⚠️  세관부호(cstm_sgn) 누락: {null_cstm_cnt}건 — 해당 auction은 cstm_sgn=NULL로 저장됨")
         return auction_cnt, item_cnt, error_cnt
 
     except Exception as e:
