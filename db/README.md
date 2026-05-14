@@ -21,7 +21,7 @@
 
 ### 1-1. 데이터 흐름 한눈에 보기
 
-1. `schema_create.sql`(+선택 `schema_patch_v2.sql`)로 기본 스키마를 준비
+1. `schema_create.sql`(+선택 `schema_patch_v2.sql` → `schema_patch_v3.sql`)로 기본 스키마를 준비
 2. `schema_app_user_v1.sql`로 사용자 도메인 스키마를 추가
 3. seed SQL(category/synonym)로 분류 기준 데이터를 적재
 4. ETL(`etl/load_unipass_to_mysql.py`)로 공매/물품/이미지 메타를 적재
@@ -54,6 +54,15 @@ SQL 파일 내용을 통째로 복사해서 Workbench 쿼리 탭에 붙여넣어
 1-1) `schema_patch_v2.sql`  
 - 재설계 가이드 기준 확장 DDL(ingestion/run/raw payload/change event/queue/collector_source)을 반영한다.
 - 기존 데이터가 있는 환경에서는 `schema_create.sql` 대신 `schema_patch_v2.sql`만 적용해도 된다.
+
+1-2) `schema_patch_v3.sql`  
+- v3 버그픽스/성능 개선 패치를 반영한다. `schema_patch_v2.sql` 이후에 실행한다.
+  - `auction_item.cmdt_qty`: `INT` → `DECIMAL(12,2)` (소수 수량 허용)
+  - `synonym_dictionary` UNIQUE: `(src_term, norm_term)` → `(src_term, norm_term, lang, term_type)` (언어·타입이 다른 동의어 구분)
+  - `auction_item.idx_item_price`: 가격 범위 필터 인덱스 추가
+  - `category` FK: `ON DELETE SET NULL` → `ON DELETE RESTRICT` (부모 삭제 시 고아 카테고리 생성 방지)
+  - `auction_item.atnt_cmdt`: `CHAR(1)` → `ENUM('Y','N')` (유효값 외 삽입 차단)
+  > **주의**: `atnt_cmdt` 변경 전 `SELECT DISTINCT atnt_cmdt FROM auction_item;`으로 기존 값 확인 필요
 
 1-2) `schema_app_user_v1.sql`  
 - `app_user` 도메인(회원/소셜연동/관심대상/알림룰/알림이력) 스키마를 **별도 DB(`app_user`)** 로 생성한다.
@@ -141,7 +150,7 @@ python classification/build_classification.py
 ## 2-1. 처음 실행하는 사람을 위한 최소 실행 체크리스트
 
 1. `customs_auction` 스키마 생성 및 기본 DB 선택
-2. `schema_create.sql` 실행 (기존 데이터 유지가 필요하면 `schema_patch_v2.sql` 우선 검토)
+2. `schema_create.sql` 실행 (기존 데이터 유지가 필요하면 `schema_patch_v2.sql` → `schema_patch_v3.sql` 순서로 적용)
 3. `schema_app_user_v1.sql` 실행
 4. `seed_category.sql` → `seed_category_extend.sql` 순서 실행
 5. `seed_synonym.sql` → `seed_synonym_extend.sql` 순서 실행

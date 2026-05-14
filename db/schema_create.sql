@@ -186,14 +186,14 @@ CREATE TABLE IF NOT EXISTS auction_item (
   cmdt_ln_no VARCHAR(10) NOT NULL COMMENT '물품라인번호(cmdtLnNo) - 유일키 구성요소',
 
   cmdt_nm VARCHAR(255) NOT NULL COMMENT '물품명(cmdtNm)',
-  cmdt_qty INT NULL COMMENT '수량(cmdtQty)',
+  cmdt_qty DECIMAL(12,2) NULL COMMENT '수량(cmdtQty)',
   cmdt_qty_ut_cd VARCHAR(10) NULL COMMENT '수량단위코드(cmdtQtyUtCd)',
   cmdt_wght DECIMAL(12,3) NULL COMMENT '중량(cmdtWght)',
   cmdt_wght_ut_cd VARCHAR(10) NULL COMMENT '중량단위코드(cmdtWghtUtCd)',
 
   pbac_prng_prc BIGINT NULL COMMENT '예정가격/최저입찰가(pbacPrngPrc)',
 
-  atnt_cmdt CHAR(1) NULL COMMENT '주의물품 여부(atntCmdt) Y/N',
+  atnt_cmdt ENUM('Y','N') NULL COMMENT '주의물품 여부(atntCmdt)',
   atnt_cmdt_nm VARCHAR(50) NULL COMMENT '주의물품 표기(atntCmdtNm)',
   pbac_cond_cn TEXT NULL COMMENT '공매조건(pbacCondCn)',
 
@@ -203,6 +203,7 @@ CREATE TABLE IF NOT EXISTS auction_item (
   PRIMARY KEY (pbac_no, pbac_srno, cmdt_ln_no),
 
   INDEX idx_item_name (cmdt_nm),
+  INDEX idx_item_price (pbac_prng_prc),
   INDEX idx_item_qty_unit (cmdt_qty_ut_cd),
   INDEX idx_item_wght_unit (cmdt_wght_ut_cd),
 
@@ -261,7 +262,7 @@ CREATE TABLE IF NOT EXISTS category (
 
   CONSTRAINT fk_category_parent
     FOREIGN KEY (parent_id) REFERENCES category(category_id)
-    ON UPDATE CASCADE ON DELETE SET NULL
+    ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='자동분류용 카테고리 트리(대/중/소/세)';
 
 
@@ -320,8 +321,8 @@ CREATE TABLE IF NOT EXISTS synonym_dictionary (
 
   PRIMARY KEY (dict_id),
 
-  -- 같은 src_term이 여러 norm_term으로 매핑될 수 있으므로 복합 유니크
-  UNIQUE KEY uq_dict_pair (src_term, norm_term),
+  -- (원본어, 정규화어, 언어, 타입) 조합이 실제 유일 단위
+  UNIQUE KEY uq_dict_pair (src_term, norm_term, lang, term_type),
 
   INDEX idx_dict_src (src_term),
   INDEX idx_dict_norm (norm_term),

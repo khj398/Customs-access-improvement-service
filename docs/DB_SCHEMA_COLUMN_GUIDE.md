@@ -60,10 +60,10 @@
 | `pbac_srno` | 공매일련번호 |
 | `cmdt_ln_no` | 물품라인번호(복합키 구성) |
 | `cmdt_nm` | 물품명(원문) |
-| `cmdt_qty`, `cmdt_qty_ut_cd` | 수량/수량단위 |
+| `cmdt_qty`, `cmdt_qty_ut_cd` | 수량(`DECIMAL(12,2)`)/수량단위 — 소수 수량 허용 |
 | `cmdt_wght`, `cmdt_wght_ut_cd` | 중량/중량단위 |
-| `pbac_prng_prc` | 예정가격/최저입찰가 |
-| `atnt_cmdt`, `atnt_cmdt_nm` | 주의물품 여부/표기 |
+| `pbac_prng_prc` | 예정가격/최저입찰가 — `idx_item_price` 인덱스 적용(가격 범위 검색) |
+| `atnt_cmdt`, `atnt_cmdt_nm` | 주의물품 여부(`ENUM('Y','N')`)/표기 |
 | `pbac_cond_cn` | 공매 조건 |
 | `created_at`, `updated_at` | 생성/수정 시각 |
 
@@ -105,6 +105,10 @@
 | `is_active` | 활성 여부 |
 | `created_at`, `updated_at` | 생성/수정 시각 |
 
+> **UNIQUE 제약**: `(src_term, norm_term, lang, term_type)` 4개 조합이 유일 단위.  
+> 동일 원본어라도 언어·타입이 다르면 별도 레코드로 공존 가능  
+> (예: `WINE → 와인(TRANSLATION)` 과 `WINE → 와인(SYN)` 은 별도 레코드).
+
 ### 2-4. `item_search_token` (검색 토큰)
 복합 PK: (`pbac_no`, `pbac_srno`, `cmdt_ln_no`, `token`)
 
@@ -128,7 +132,8 @@
 | `created_at`, `updated_at` | 생성/수정 시각 |
 
 
-### 2-6. 수집 소스 분리 반영 현황 (중요)
+### 2-6. 수집 소스 분리 반영 현황
+
 현재 수집기가 3개로 분리된 상황을 기준으로 정리:
 
 - `UNIPASS_LIST_Business.py`: 수입화물 목록 수집
@@ -137,12 +142,12 @@
 
 DB 반영 상태:
 - 이미지 저장: **있음** (`auction_item_image`)
-- 수입화물/휴대품 구분: `cargo_type`(`pbacTrgtCargTpcd`)로 **간접 구분** 가능
+- 수입화물/휴대품 구분: `auction.collector_source`(BUSINESS/PERSONAL/IMAGE)로 **직접 구분** 가능 — `schema_patch_v2` 이후 적용됨
 - 전자입찰/일반입찰 구분: `auction.elct_bid_eon`으로 **구분 가능**
+- `auction_item_image.source_type` 표준값: `UNIPASS_IMAGE`, `LIST_BUSINESS`, `LIST_PERSONAL`
 
-권장 보강(1차 DDL 후보):
-- `auction`에 `collector_source`(BUSINESS/PERSONAL/IMAGE) 또는 동등 필드 추가
-- `auction_item_image.source_type` 값 표준화(`UNIPASS_IMAGE`, `LIST_BUSINESS`, `LIST_PERSONAL`)
+> `auction_item`에 `collector_source`를 별도 추가하지 않는다.  
+> 모든 검색 쿼리가 auction JOIN을 이미 사용하며, 출처는 공매(auction) 단위 메타이므로 정규화 유지가 올바름.
 
 
 ---

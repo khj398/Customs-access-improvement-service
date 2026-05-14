@@ -10,7 +10,7 @@
 
 ## 1) 실행 전 준비
 
-1. DB 스키마가 먼저 생성되어 있어야 합니다. (`db/schema_create.sql`, 필요 시 `db/schema_patch_v2.sql`)
+1. DB 스키마가 먼저 생성되어 있어야 합니다. (`db/schema_create.sql`, 기존 DB는 `schema_patch_v2.sql` → `schema_patch_v3.sql` 순서로 적용)
 2. Python 의존성을 준비합니다.
 
 ```bash
@@ -93,9 +93,11 @@ UNIPASS_IMAGE_PBAC_NO="0202601900003" python etl/load_unipass_to_mysql.py
 - JSON 1레코드마다 `pbacNo`, `pbacSrno`, `cmdtLnNo`가 없으면 skip/error 처리
 - 마스터 테이블(`customs_office`, `bonded_warehouse`, `cargo_type`, `unit_code`) UPSERT
 - `auction`, `auction_item` UPSERT
+  - `cmdt_qty`는 `DECIMAL(12,2)` 타입으로 소수 수량도 저장 가능 (`schema_patch_v3` 이후)
 - 물품 상태/가격 변화 감지 시 `auction_item_change_event` 기록
 - 원본 payload는 `raw_auction_payload`에 해시와 함께 저장
 - 실행 이력은 `ingestion_run`에 `SUCCESS/PARTIAL/FAILED`로 기록
+- 소스 데이터에 `pbacCstmSgn`(세관부호)이 없으면 `cstm_sgn=NULL`로 저장되며, 종료 시 누락 건수를 경고로 출력
 
 > 동일 데이터 재실행은 UPSERT 기반으로 안전하게 처리됩니다.
 
