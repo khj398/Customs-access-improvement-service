@@ -21,6 +21,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 # ── 경로 ──────────────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent
@@ -150,7 +151,7 @@ def main():
                 args.auto_rules_confidence,
             )
 
-    schedule.every().day.at(args.time).do(job)
+    schedule.every().day.at(args.time, tz=ZoneInfo('Asia/Seoul')).do(job)
     log.info(f"다음 실행 예정: {schedule.next_run()}")
 
     if args.run_now:

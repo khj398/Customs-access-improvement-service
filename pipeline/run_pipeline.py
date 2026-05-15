@@ -210,7 +210,7 @@ def main():
         if not ok and args.mode == "full":
             print("\n⚠️  ETL 실패. 분류 단계를 건너뜁니다.")
             print_stats()
-            return
+            sys.exit(1)
 
     # ── STEP 2: 분류 ─────────────────────────────────────────────────
     if args.mode in ("full", "classify-only"):

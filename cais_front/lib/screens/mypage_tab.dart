@@ -174,79 +174,90 @@ class _MypageTabState extends State<MypageTab> {
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: const Color(0xFFD8D9DD), borderRadius: BorderRadius.circular(2)),
-              ),
-            ),
-            const SizedBox(height: 14),
-            RichText(
-              text: TextSpan(
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A1B33)),
-                children: [
-                  TextSpan(text: '${day.month}월 ${day.day}일 마감 물품 '),
-                  TextSpan(text: '${items.length}건', style: const TextStyle(color: _kPrimary)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...sorted.map((item) {
-              final isWished = wishIds.contains(item.id);
-              return GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                  Get.to(() => DetailScreen(item: item));
-                },
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.85,
+        builder: (_, scrollCtrl) => Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
                 child: Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isWished ? const Color(0xFFEEF3FF) : const Color(0xFFF8F8FA),
-                    borderRadius: BorderRadius.circular(12),
-                    border: isWished ? Border.all(color: _kPrimary, width: 1.5) : null,
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44, height: 44,
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(color: const Color(0xFFD8D9DD), borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 14),
+              RichText(
+                text: TextSpan(
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Color(0xFF1A1B33)),
+                  children: [
+                    TextSpan(text: '${day.month}월 ${day.day}일 마감 물품 '),
+                    TextSpan(text: '${items.length}건', style: const TextStyle(color: _kPrimary)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView(
+                  controller: scrollCtrl,
+                  children: sorted.map((item) {
+                    final isWished = wishIds.contains(item.id);
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        Get.to(() => DetailScreen(item: item));
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: isWished ? const Color(0xFFDBEAFE) : const Color(0xFFE8E9EC),
-                          borderRadius: BorderRadius.circular(10),
+                          color: isWished ? const Color(0xFFEEF3FF) : const Color(0xFFF8F8FA),
+                          borderRadius: BorderRadius.circular(12),
+                          border: isWished ? Border.all(color: _kPrimary, width: 1.5) : null,
                         ),
-                        child: Icon(
-                          isWished ? Icons.favorite : Icons.inventory_2_outlined,
-                          color: isWished ? _kPrimary : const Color(0xFFA6ABB4),
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Text(item.name,
-                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14,
-                                    color: isWished ? _kPrimary : const Color(0xFF1A1B33))),
-                            Text(item.customs, style: const TextStyle(color: Color(0xFF8E919D), fontSize: 12)),
+                            Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(
+                                color: isWished ? const Color(0xFFDBEAFE) : const Color(0xFFE8E9EC),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                isWished ? Icons.favorite : Icons.inventory_2_outlined,
+                                color: isWished ? _kPrimary : const Color(0xFFA6ABB4),
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(item.name,
+                                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14,
+                                          color: isWished ? _kPrimary : const Color(0xFF1A1B33))),
+                                  Text(item.customs, style: const TextStyle(color: Color(0xFF8E919D), fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            Text(formatPrice(item.price),
+                                style: const TextStyle(color: _kPrimary, fontWeight: FontWeight.w800, fontSize: 14)),
                           ],
                         ),
                       ),
-                      Text(formatPrice(item.price),
-                          style: const TextStyle(color: _kPrimary, fontWeight: FontWeight.w800, fontSize: 14)),
-                    ],
-                  ),
+                    );
+                  }).toList(),
                 ),
-              );
-            }),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
