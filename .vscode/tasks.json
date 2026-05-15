@@ -4,12 +4,9 @@
     {
       "label": "백엔드 시작 (Express)",
       "type": "shell",
-      "command": "\"C:\\Program Files\\nodejs\\npm.cmd\" install && \"C:\\Program Files\\nodejs\\npm.cmd\" run dev",
+      "command": "npm install && npm run dev",
       "options": {
-        "cwd": "${workspaceFolder}/cais_back",
-        "env": {
-          "PATH": "C:\\Program Files\\nodejs;C:\\Users\\hengjun\\flutter\\bin;${env:PATH}"
-        }
+        "cwd": "${workspaceFolder}/cais_back"
       },
       "group": "build",
       "isBackground": true,
@@ -25,12 +22,9 @@
     {
       "label": "프론트엔드 시작 (Flutter Web)",
       "type": "shell",
-      "command": "\"C:\\Users\\hengjun\\flutter\\bin\\flutter.bat\" pub get && \"C:\\Users\\hengjun\\flutter\\bin\\flutter.bat\" run -d chrome",
+      "command": "flutter pub get && flutter run -d chrome",
       "options": {
-        "cwd": "${workspaceFolder}/cais_front",
-        "env": {
-          "PATH": "C:\\Program Files\\nodejs;C:\\Users\\hengjun\\flutter\\bin;${env:PATH}"
-        }
+        "cwd": "${workspaceFolder}/cais_front"
       },
       "group": "build",
       "isBackground": true,

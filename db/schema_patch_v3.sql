@@ -21,8 +21,20 @@ ALTER TABLE synonym_dictionary
 
 -- 3) auction_item.pbac_prng_prc 인덱스 추가
 --    검색 API / queries.sql #3의 가격 범위 필터가 풀스캔 발생 → 인덱스로 해결
-ALTER TABLE auction_item
-  ADD INDEX idx_item_price (pbac_prng_prc);
+--    schema_create.sql에 이미 존재할 수 있으므로 멱등성 보장
+SET @idx_exists = (
+  SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE table_schema = DATABASE()
+    AND table_name = 'auction_item'
+    AND index_name = 'idx_item_price'
+);
+SET @sql = IF(@idx_exists = 0,
+  'ALTER TABLE auction_item ADD INDEX idx_item_price (pbac_prng_prc)',
+  'SELECT ''idx_item_price already exists, skipping'' AS info'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 
 -- 4) category FK: ON DELETE SET NULL → ON DELETE RESTRICT
