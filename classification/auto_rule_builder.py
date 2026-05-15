@@ -93,10 +93,12 @@ def fetch_fallback_items(cur) -> List[dict]:
 # ── Phase 2: 패턴 추출 ───────────────────────────────────────────────────
 def extract_patterns(
     items: List[dict], min_count: int
-) -> List[Tuple[Tuple[str, ...], List[str]]]:
+) -> List[Tuple[Tuple[str, ...], int, List[str]]]:
     """
-    Returns list of (token_tuple, sample_names) for patterns meeting min_count.
+    Returns list of (token_tuple, full_count, sample_names) for patterns meeting min_count.
     token_tuple is either (single_token,) or (tok1, tok2) bigram.
+    full_count is the actual frequency across all items (not capped).
+    sample_names is capped to 5 for display only.
     """
     single_counter: Counter = Counter()
     bigram_counter: Counter = Counter()
@@ -129,11 +131,10 @@ def extract_patterns(
             continue
         if any(t in CATEGORY_STOP for t in bigram):
             continue
-        names = bigram_names[bigram][:5]
         name_key = " ".join(bigram)
         if name_key not in seen_names:
             seen_names.add(name_key)
-            candidates.append((bigram, names))
+            candidates.append((bigram, count, bigram_names[bigram][:5]))
 
     # Single tokens
     for token, count in single_counter.most_common():
@@ -142,20 +143,19 @@ def extract_patterns(
         if token in CATEGORY_STOP:
             continue
         # Skip if already covered by a bigram candidate
-        already_covered = any(token in bg for bg, _ in candidates)
+        already_covered = any(token in bg for bg, _, _ in candidates)
         if already_covered:
             continue
-        names = single_names[token][:5]
         if token not in seen_names:
             seen_names.add(token)
-            candidates.append(((token,), names))
+            candidates.append(((token,), count, single_names[token][:5]))
 
     return candidates
 
 
 # ── Phase 3: OpenAI 카테고리 제안 ────────────────────────────────────────
 def suggest_with_openai(
-    candidates: List[Tuple[Tuple[str, ...], List[str]]],
+    candidates: List[Tuple[Tuple[str, ...], int, List[str]]],
     resolver: CategoryResolver,
     model: str,
 ) -> List[dict]:
@@ -177,7 +177,7 @@ def suggest_with_openai(
 
     pattern_list = [
         {"pattern": " ".join(tpl), "sample_items": names}
-        for tpl, names in candidates
+        for tpl, _count, names in candidates
     ]
 
     prompt_user = (
@@ -248,7 +248,7 @@ def _append_rule_to_yaml(rule_block: str):
 
 
 def decide_and_apply(
-    candidates: List[Tuple[Tuple[str, ...], List[str]]],
+    candidates: List[Tuple[Tuple[str, ...], int, List[str]]],
     suggestions: List[dict],
     resolver: CategoryResolver,
     min_count: int,
@@ -261,14 +261,12 @@ def decide_and_apply(
     # suggestions를 pattern 키로 인덱싱
     sugg_by_pattern: Dict[str, dict] = {s["pattern"]: s for s in suggestions}
     existing_ids = _load_existing_rule_ids()
-    item_counts = _get_pattern_item_counts(candidates)
 
     auto_added = 0
     for_review = []
 
-    for tokens, sample_names in candidates:
+    for tokens, count, sample_names in candidates:
         pattern_str = " ".join(tokens)
-        count = item_counts.get(tokens, len(sample_names))
         sugg = sugg_by_pattern.get(pattern_str)
         if not sugg:
             continue
@@ -347,12 +345,6 @@ def decide_and_apply(
         _write_review_file(for_review, dry_run)
 
     return auto_added, len(for_review)
-
-
-def _get_pattern_item_counts(
-    candidates: List[Tuple[Tuple[str, ...], List[str]]]
-) -> Dict[Tuple[str, ...], int]:
-    return {tokens: len(names) for tokens, names in candidates}
 
 
 def _write_review_file(for_review: List[dict], dry_run: bool):
@@ -454,8 +446,8 @@ def main():
             if not candidates:
                 print("  기준을 충족하는 패턴이 없습니다.")
                 return
-            for tpl, names in candidates[:10]:
-                print(f"     {' '.join(tpl):30s}  ({len(names)}건)")
+            for tpl, count, _names in candidates[:10]:
+                print(f"     {' '.join(tpl):30s}  ({count}건)")
             if len(candidates) > 10:
                 print(f"     ... 외 {len(candidates)-10}개")
 

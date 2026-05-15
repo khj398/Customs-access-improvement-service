@@ -6,7 +6,7 @@ import '../widgets/item_card.dart';
 const _kPrimary = Color(0xFF3B82F6);
 const _kPrimaryDark = Color(0xFF171A3B);
 
-const _kCategories = ['전체', '산업·장비', '전자·전기', '가전', '생활·주방', '식품·음료', '의류·패션', '기타'];
+const _kCategories = ['전체', '산업·장비', '전자·전기', '가전', '생활·주방', '식품·음료', '의류·패션잡화', '기타'];
 
 class SearchTab extends StatefulWidget {
   const SearchTab({super.key});
