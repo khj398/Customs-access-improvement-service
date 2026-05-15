@@ -40,15 +40,28 @@
 ## 디렉터리 구조
 ```text
 CUSTOMS-ACCESS-IMPROVEMENT-SERVICE/
-├─ project/AWSLambda/                 # 유니패스 데이터 수집 스크립트
-├─ db/                                # DB 스키마/시드/검증 SQL + DB 가이드
-├─ etl/                               # JSON/이미지 -> MySQL 적재 스크립트 + ETL 가이드
-├─ classification/                    # 자동 분류/토큰 생성 스크립트 + 룰 가이드
-├─ backend/                           # FastAPI 기반 API 서버
-├─ cais_front/                        # Flutter 프론트엔드
-├─ docs/                              # 설계/계획 문서
+├─ project/AWSLambda/          # 유니패스 데이터 수집 Lambda 스크립트
+├─ db/                         # DB 스키마·시드·검증 SQL
+├─ etl/                        # JSON/이미지 → MySQL 적재 스크립트
+├─ classification/             # 자동 분류 엔진 + 규칙 파일 + 자동 규칙 생성기
+├─ pipeline/                   # 파이프라인 오케스트레이터 + 스케줄러
+├─ cais_back/                  # Node.js (Express) REST API 서버
+├─ cais_front/                 # Flutter 모바일 앱
+├─ backend/                    # (구) FastAPI 서버 (레거시)
+├─ docs/                       # 설계/계획 문서
 └─ README.md
 ```
+
+각 디렉토리의 파일 상세 설명은 해당 폴더의 README를 참조하세요.
+
+| 디렉토리 | 문서 |
+|----------|------|
+| `cais_back/` | [`cais_back/README.md`](cais_back/README.md) |
+| `cais_front/` | [`cais_front/STRUCTURE.md`](cais_front/STRUCTURE.md) |
+| `classification/` | [`classification/README.md`](classification/README.md) |
+| `pipeline/` | [`pipeline/README.md`](pipeline/README.md) |
+| `etl/` | [`etl/README.md`](etl/README.md) |
+| `db/` | [`db/README.md`](db/README.md) |
 
 ---
 
@@ -115,11 +128,59 @@ MySQL Workbench에서:
 
 ---
 
+### 4) Node.js 백엔드 실행
+
+```bash
+cd cais_back
+npm install
+node server.js   # 포트 3000
+```
+
+환경변수 설정 (`.env` 또는 셸):
+```
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASSWORD=<비밀번호>
+DB_NAME=customs_auction
+JWT_SECRET=<임의 문자열>
+```
+
+---
+
+### 5) Flutter 앱 실행
+
+```bash
+cd cais_front
+flutter pub get
+flutter run   # Android 에뮬레이터: 백엔드를 10.0.2.2:3000으로 자동 연결
+```
+
+실기기 사용 시:
+```bash
+flutter run --dart-define=API_BASE_URL=http://192.168.x.x:3000
+```
+
+---
+
+### 6) (선택) 자동 분류 파이프라인
+
+```bash
+# 매일 자동 실행 (스케줄러)
+python pipeline/scheduler.py --use-openai --auto-rules
+
+# 1회만 즉시 실행
+python pipeline/run_pipeline.py --use-openai --auto-rules
+```
+
+---
+
 ## 문서 바로가기
 - DB 실행/설계 가이드: [`db/README.md`](db/README.md)
 - ETL 실행 가이드: [`etl/README.md`](etl/README.md)
 - 분류 룰/사전 확장 가이드: [`classification/README.md`](classification/README.md)
-- 백엔드 실행 가이드: [`backend/README.md`](backend/README.md)
+- 파이프라인/스케줄러 가이드: [`pipeline/README.md`](pipeline/README.md)
+- Node.js 백엔드 가이드: [`cais_back/README.md`](cais_back/README.md)
+- Flutter 앱 구조: [`cais_front/STRUCTURE.md`](cais_front/STRUCTURE.md)
 - 데모 구현 계획: [`docs/DEMO_IMPLEMENTATION_PLAN.md`](docs/DEMO_IMPLEMENTATION_PLAN.md)
 
 ---

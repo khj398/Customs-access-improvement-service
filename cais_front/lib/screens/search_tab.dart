@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/app_controller.dart';
-import '../data/items_data.dart';
 import '../widgets/item_card.dart';
 
 const _kPrimary = Color(0xFF3B82F6);
 const _kPrimaryDark = Color(0xFF171A3B);
+
+const _kCategories = ['전체', '산업·장비', '전자·전기', '가전', '생활·주방', '식품·음료', '의류·패션', '기타'];
 
 class SearchTab extends StatefulWidget {
   const SearchTab({super.key});
@@ -33,14 +34,22 @@ class _SearchTabState extends State<SearchTab> {
   }
 
   void _onInput(String val) {
-    _ctrl.searchQuery.value = val;
     _ctrl.newDropsMode.value = false;
+    _ctrl.searchItems(val);
   }
 
   void _clearSearch() {
     _inputCtrl.clear();
-    _ctrl.searchQuery.value = '';
     _ctrl.newDropsMode.value = false;
+    _ctrl.searchItems('');
+  }
+
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollEndNotification &&
+        notification.metrics.pixels >= notification.metrics.maxScrollExtent - 200) {
+      _ctrl.loadMore();
+    }
+    return false;
   }
 
   @override
@@ -105,10 +114,10 @@ class _SearchTabState extends State<SearchTab> {
                   height: 42,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
-                    itemCount: kCategories.length,
+                    itemCount: _kCategories.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 8),
                     itemBuilder: (_, i) {
-                      final cat = kCategories[i];
+                      final cat = _kCategories[i];
                       final active = _ctrl.activeCategory.value == cat;
                       return GestureDetector(
                         onTap: () {
@@ -140,7 +149,28 @@ class _SearchTabState extends State<SearchTab> {
           // Grid
           Expanded(
             child: Obx(() {
-              final items = _ctrl.filteredItems;
+              if (ctrl.isLoading.value && ctrl.allItems.isEmpty) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (ctrl.hasError.value && ctrl.allItems.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.wifi_off, size: 48, color: Color(0xFFB0B3BF)),
+                      const SizedBox(height: 10),
+                      Text(ctrl.errorMessage.value,
+                          style: const TextStyle(color: Color(0xFFB0B3BF))),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: ctrl.loadItems,
+                        child: const Text('다시 시도'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              final items = ctrl.filteredItems;
               if (items.isEmpty) {
                 return const Center(
                   child: Column(
@@ -153,16 +183,29 @@ class _SearchTabState extends State<SearchTab> {
                   ),
                 );
               }
-              return GridView.builder(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 0.68,
+              return NotificationListener<ScrollNotification>(
+                onNotification: _onScrollNotification,
+                child: GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.68,
+                  ),
+                  itemCount: items.length + (ctrl.hasMore.value ? 1 : 0),
+                  itemBuilder: (_, i) {
+                    if (i == items.length) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    }
+                    return ItemCard(item: items[i]);
+                  },
                 ),
-                itemCount: items.length,
-                itemBuilder: (_, i) => ItemCard(item: items[i]),
               );
             }),
           ),
@@ -170,4 +213,6 @@ class _SearchTabState extends State<SearchTab> {
       ),
     );
   }
+
+  AppController get ctrl => _ctrl;
 }

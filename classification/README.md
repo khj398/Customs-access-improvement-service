@@ -207,3 +207,104 @@ DB 결과 검증은 db/feedback.sql 사용을 권장한다.
 분류 성공/미분류(fallback) 개수 확인
 fallback 항목의 RAW 토큰 TOP 분석 → 룰/사전 확장 근거
 특정 검색어(와인/술/주류 등) 토큰 존재 여부 확인
+
+---
+
+## 8. 파일 구조
+
+```
+classification/
+├─ build_classification.py   # 핵심 분류 엔진 (1,100+ 줄)
+├─ auto_rule_builder.py      # Fallback 자동 규칙 생성기
+├─ run_classification.py     # 환경변수 래퍼 (build_classification.py 호출)
+├─ load_synonyms.py          # 동의어 사전 DB 로드 유틸
+├─ rules.yaml                # 분류 규칙 정의 파일
+├─ synonyms.yaml             # 동의어/번역 사전
+└─ eval/
+   ├─ accuracy_report.txt    # 최근 파이프라인 실행 통계
+   ├─ evaluate.py            # ground_truth 기반 정확도 평가
+   ├─ ground_truth.csv       # 수동 라벨 정답 데이터
+   ├─ check_db.py            # DB 무결성 검사
+   ├─ db_setup_kitchen.py    # 테스트 데이터 셋업
+   ├─ label_update.py        # 수동 라벨 업데이트 유틸
+   ├─ fix_labels.py          # 라벨 수정 스크립트
+   ├─ refresh_auto.py        # 자동 분류 새로고침
+   └─ rule_suggestions.txt   # auto_rule_builder 검토 목록 (자동 생성)
+```
+
+### `build_classification.py`
+핵심 분류 엔진. DB에서 모든 `auction_item`을 읽어 분류 결과를 `item_classification`에, 검색 토큰을 `item_search_token`에 저장합니다.
+
+주요 함수:
+- `normalize_text(s)` — 대문자화, 공백 정리
+- `extract_raw_tokens(norm)` — A-Z0-9 기준 토큰 분리 (2자 이상)
+- `build_rules(rules_path)` — rules.yaml 로드 (없으면 하드코딩 fallback)
+- `CategoryResolver` — category 트리를 메모리에 적재, 경로↔ID 변환
+- `classify_with_openai(name, resolver, model)` — OpenAI gpt-4o-mini 호출
+- `main()` — 전체 파이프라인 실행
+
+### `auto_rule_builder.py`
+Fallback(기타/미분류) 물품을 자동으로 분석해 `rules.yaml`에 규칙을 추가합니다.  
+`build_classification.py`의 `normalize_text`, `extract_raw_tokens`, `CategoryResolver`를 import하여 재사용합니다.
+
+**5단계 처리:**
+
+| 단계 | 내용 |
+|------|------|
+| Phase 1 | DB에서 fallback 물품 조회 (`category.name_ko = '기타'` 또는 미분류) |
+| Phase 2 | 단일 토큰·2-gram 빈도 분석 → `--min-count` 이상 패턴 추출 |
+| Phase 3 | OpenAI에 패턴별 카테고리 제안 요청 (배치) |
+| Phase 4 | confidence ≥ threshold → `rules.yaml` 자동 추가 / 미달 → `eval/rule_suggestions.txt` 기록 |
+| Phase 5 | 규칙 추가 시 `--rule-only-update` 재분류 실행 |
+
+**안전 장치:**
+- 쓰기 전 `rules.yaml.bak.{timestamp}` 백업 (최근 5개 유지)
+- category_path DB 존재 확인
+- 중복 rule ID 체크
+- `--dry-run` — 파일/DB 미수정, 결과만 출력
+
+```bash
+# 파일 미수정, 제안만 출력
+python classification/auto_rule_builder.py --dry-run --min-count 3
+
+# 실제 적용 (기본 threshold=0.85)
+python classification/auto_rule_builder.py --min-count 5 --confidence 0.85
+
+# 재분류 생략
+python classification/auto_rule_builder.py --no-rerun
+```
+
+### `rules.yaml`
+Rule 기반 분류 규칙 파일. 각 규칙의 구조:
+
+```yaml
+rules:
+  - id: alcohol_wine           # 고유 식별자
+    priority: 10               # 낮을수록 먼저 평가
+    keywords_any:              # 하나라도 포함되면 매칭 (OR)
+      - WINE
+      - WHISKY
+    keywords_all: []           # 전부 포함되어야 매칭 (AND)
+    category_path:             # DB category 트리 경로
+      - 식품·음료
+      - 음료
+      - 주류
+    confidence: 0.88
+    rationale: "주류 키워드 직접 매칭"
+```
+
+규칙 추가 기준 (주석 참조):
+- 5건 이상 fallback 물품이 동일 키워드 패턴 → 규칙 추가 검토
+- OpenAI가 동일 카테고리를 3건 이상·confidence ≥ 0.85로 제안 → 규칙 승격
+- 해당 카테고리에 6개월 이상 물품 0건 → 규칙 삭제 검토
+
+### `synonyms.yaml`
+영문 키워드 → 한글/동의어 매핑. DB의 `synonym_dictionary`와 동기화.  
+`load_synonyms.py`로 DB에 적재합니다.
+
+### `eval/evaluate.py`
+`eval/ground_truth.csv`와 실제 DB 분류 결과를 비교해 정확도(accuracy) 지표를 계산합니다.
+
+### `eval/rule_suggestions.txt`
+`auto_rule_builder.py`가 자동 생성하는 검토 파일.  
+threshold 미달 패턴을 YAML 블록 형식으로 출력하며, 내용을 확인 후 `rules.yaml`에 수동으로 붙여넣을 수 있습니다.

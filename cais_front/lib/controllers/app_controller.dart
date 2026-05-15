@@ -1,8 +1,19 @@
+import 'dart:async';
 import 'package:get/get.dart';
 import '../models/item.dart';
-import '../data/items_data.dart';
+import '../services/api_service.dart';
+import '../services/api_config.dart';
 
 class AppController extends GetxController {
+  final _api = ApiService();
+
+  final allItems = <AuctionItem>[].obs;
+  final isLoading = false.obs;
+  final hasError = false.obs;
+  final errorMessage = ''.obs;
+  final currentPage = 1.obs;
+  final hasMore = true.obs;
+
   final wishlistIds = <int>[].obs;
   final activeCategory = '전체'.obs;
   final searchQuery = ''.obs;
@@ -11,6 +22,86 @@ class AppController extends GetxController {
 
   final toastMessage = ''.obs;
   final showingToast = false.obs;
+
+  Timer? _searchDebounce;
+
+  @override
+  void onInit() {
+    super.onInit();
+    loadItems();
+  }
+
+  @override
+  void onClose() {
+    _searchDebounce?.cancel();
+    super.onClose();
+  }
+
+  Future<void> loadItems() async {
+    isLoading.value = true;
+    hasError.value = false;
+    try {
+      final items = await _api.fetchItems(page: 1, limit: ApiConfig.defaultPageSize);
+      allItems.assignAll(items);
+      currentPage.value = 1;
+      hasMore.value = items.length >= ApiConfig.defaultPageSize;
+    } on ApiException catch (e) {
+      hasError.value = true;
+      errorMessage.value = e.message;
+    } catch (e) {
+      hasError.value = true;
+      errorMessage.value = '데이터를 불러올 수 없습니다.';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (isLoading.value || !hasMore.value) return;
+    isLoading.value = true;
+    try {
+      final nextPage = currentPage.value + 1;
+      final items = await _api.fetchItems(
+        keyword: searchQuery.value.isEmpty ? null : searchQuery.value,
+        page: nextPage,
+        limit: ApiConfig.defaultPageSize,
+      );
+      allItems.addAll(items);
+      currentPage.value = nextPage;
+      hasMore.value = items.length >= ApiConfig.defaultPageSize;
+    } catch (_) {
+      // 페이지네이션 실패는 조용히 무시
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  void searchItems(String query) {
+    searchQuery.value = query;
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () async {
+      isLoading.value = true;
+      hasError.value = false;
+      try {
+        final items = await _api.fetchItems(
+          keyword: query.isEmpty ? null : query,
+          page: 1,
+          limit: ApiConfig.defaultPageSize,
+        );
+        allItems.assignAll(items);
+        currentPage.value = 1;
+        hasMore.value = items.length >= ApiConfig.defaultPageSize;
+      } on ApiException catch (e) {
+        hasError.value = true;
+        errorMessage.value = e.message;
+      } catch (_) {
+        hasError.value = true;
+        errorMessage.value = '검색 중 오류가 발생했습니다.';
+      } finally {
+        isLoading.value = false;
+      }
+    });
+  }
 
   void toggleWish(int id) {
     if (wishlistIds.contains(id)) {
@@ -37,14 +128,6 @@ class AppController extends GetxController {
     }
     if (activeCategory.value != '전체') {
       list = list.where((i) => i.cat == activeCategory.value).toList();
-    }
-    final q = searchQuery.value.toLowerCase();
-    if (q.isNotEmpty) {
-      final terms = _expandSearch(q);
-      list = list.where((i) {
-        final target = '${i.name} ${i.cat} ${i.customs}'.toLowerCase();
-        return terms.any((t) => target.contains(t));
-      }).toList();
     }
     return list;
   }
@@ -75,26 +158,5 @@ class AppController extends GetxController {
       searchQuery.value = '';
     }
     currentTab.value = 1;
-  }
-
-  List<String> _expandSearch(String query) {
-    final dict = <String, List<String>>{
-      '와인': ['wine'], '냉장고': ['refrigerator'], '제빙기': ['ice maker'],
-      '바지': ['pants', 'shorts'], '신발': ['shoe', 'dress shoes', 'flat'],
-      '조끼': ['vest'], '옷': ['pants', 'shorts', 'vest', 'woven'],
-      '모니터': ['monitor', 'lcd'], '티비': ['tv'], '텔레비전': ['tv'],
-      '램프': ['lamp'], '모기': ['mosquito'],
-      '고추': ['red pepper', 'dried red pepper'],
-      '초': ['candle'], '양초': ['candle'],
-      '컵': ['cup', 'mug', 'glass', 'tumbler'], '머그': ['mug'],
-      '접시': ['plate', 'bowl', 'tray'], '그릇': ['bowl', 'plate'],
-      '면': ['cotton'], '원단': ['fabric', 'woven'],
-      '팔찌': ['bracelet'], '런닝머신': ['treadmill'],
-    };
-    final terms = <String>[query];
-    dict.forEach((ko, en) {
-      if (query.contains(ko)) terms.addAll(en);
-    });
-    return terms;
   }
 }
