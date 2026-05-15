@@ -1,0 +1,60 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "백엔드 시작 (Express)",
+      "type": "shell",
+      "command": "\"C:\\Program Files\\nodejs\\npm.cmd\" install && \"C:\\Program Files\\nodejs\\npm.cmd\" run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/cais_back",
+        "env": {
+          "PATH": "C:\\Program Files\\nodejs;C:\\Users\\hengjun\\flutter\\bin;${env:PATH}"
+        }
+      },
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "프론트엔드 시작 (Flutter Web)",
+      "type": "shell",
+      "command": "\"C:\\Users\\hengjun\\flutter\\bin\\flutter.bat\" pub get && \"C:\\Users\\hengjun\\flutter\\bin\\flutter.bat\" run -d chrome",
+      "options": {
+        "cwd": "${workspaceFolder}/cais_front",
+        "env": {
+          "PATH": "C:\\Program Files\\nodejs;C:\\Users\\hengjun\\flutter\\bin;${env:PATH}"
+        }
+      },
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "전체 실행 (백엔드 + 프론트엔드)",
+      "dependsOn": [
+        "백엔드 시작 (Express)",
+        "프론트엔드 시작 (Flutter Web)"
+      ],
+      "dependsOrder": "parallel",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}
