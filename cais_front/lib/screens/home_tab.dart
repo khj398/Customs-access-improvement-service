@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/app_controller.dart';
-import '../data/items_data.dart';
 import '../widgets/item_card.dart';
 
 const _kPrimary = Color(0xFF3B82F6);
@@ -14,7 +13,6 @@ class HomeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl = Get.find<AppController>();
-    final curated = allItems.where((i) => i.status == '진행중').take(6).toList();
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -108,17 +106,45 @@ class HomeTab extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              height: 240,
-              child: curated.isEmpty
-                  ? const Center(child: Text('진행 중인 공매가 없습니다', style: TextStyle(color: Color(0xFF9DA0AD))))
-                  : ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: curated.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
-                      itemBuilder: (_, i) => SizedBox(width: 160, child: ItemCard(item: curated[i], small: true)),
+            Obx(() {
+              if (ctrl.isLoading.value && ctrl.allItems.isEmpty) {
+                return const SizedBox(
+                  height: 240,
+                  child: Center(child: CircularProgressIndicator()),
+                );
+              }
+              if (ctrl.hasError.value && ctrl.allItems.isEmpty) {
+                return SizedBox(
+                  height: 240,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(ctrl.errorMessage.value,
+                            style: const TextStyle(color: Color(0xFF9DA0AD))),
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: ctrl.loadItems,
+                          child: const Text('다시 시도'),
+                        ),
+                      ],
                     ),
-            ),
+                  ),
+                );
+              }
+              final curated = ctrl.allItems.where((i) => i.status == '진행중').take(6).toList();
+              return SizedBox(
+                height: 240,
+                child: curated.isEmpty
+                    ? const Center(child: Text('진행 중인 공매가 없습니다', style: TextStyle(color: Color(0xFF9DA0AD))))
+                    : ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: curated.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (_, i) => SizedBox(width: 160, child: ItemCard(item: curated[i], small: true)),
+                      ),
+              );
+            }),
             const SizedBox(height: 20),
 
             // Live Auctions Nearby

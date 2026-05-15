@@ -25,6 +25,7 @@ from pathlib import Path
 # ── 경로 ──────────────────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent
 PIPELINE_SCRIPT = Path(__file__).resolve().parent / "run_pipeline.py"
+AUTO_RULE_SCRIPT = ROOT / "classification" / "auto_rule_builder.py"
 LOG_DIR = ROOT / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
@@ -60,6 +61,31 @@ def run_pipeline(use_openai: bool, openai_model: str):
         log.exception(f"파이프라인 예외 발생: {exc}")
 
 
+def run_auto_rule_builder(openai_model: str, min_count: int, confidence: float):
+    """Fallback 자동 규칙 생성 1회 실행."""
+    if not os.environ.get("OPENAI_API_KEY"):
+        log.warning("OPENAI_API_KEY 없음 — auto_rule_builder 건너뜀")
+        return
+    log.info("auto_rule_builder 시작 ─────────────────────────────")
+    cmd = [
+        sys.executable,
+        str(AUTO_RULE_SCRIPT),
+        "--min-count", str(min_count),
+        "--confidence", str(confidence),
+        "--openai-model", openai_model,
+    ]
+    t0 = time.time()
+    try:
+        result = subprocess.run(cmd, env=os.environ.copy())
+        elapsed = time.time() - t0
+        if result.returncode == 0:
+            log.info(f"auto_rule_builder 완료 ✅  ({elapsed:.1f}s)")
+        else:
+            log.error(f"auto_rule_builder 실패 ❌  (exit={result.returncode}, {elapsed:.1f}s)")
+    except Exception as exc:
+        log.exception(f"auto_rule_builder 예외 발생: {exc}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="CAIS 파이프라인 스케줄러")
     parser.add_argument(
@@ -82,6 +108,23 @@ def main():
         action="store_true",
         help="즉시 1회 실행 후 스케줄 유지",
     )
+    parser.add_argument(
+        "--auto-rules",
+        action="store_true",
+        help="파이프라인 완료 후 fallback 자동 규칙 생성 실행 (OPENAI_API_KEY 필요)",
+    )
+    parser.add_argument(
+        "--auto-rules-min-count",
+        type=int,
+        default=5,
+        help="자동 규칙 추가 최소 물품 수 (기본: 5)",
+    )
+    parser.add_argument(
+        "--auto-rules-confidence",
+        type=float,
+        default=0.85,
+        help="자동 규칙 추가 최소 confidence (기본: 0.85)",
+    )
     args = parser.parse_args()
 
     try:
@@ -94,11 +137,18 @@ def main():
     log.info(
         f"스케줄러 시작 — 매일 {args.time} 실행"
         + (" (OpenAI 포함)" if args.use_openai else "")
+        + (" + 자동규칙" if args.auto_rules else "")
     )
     log.info(f"로그 파일: {log_file}")
 
     def job():
         run_pipeline(args.use_openai, args.openai_model)
+        if args.auto_rules:
+            run_auto_rule_builder(
+                args.openai_model,
+                args.auto_rules_min_count,
+                args.auto_rules_confidence,
+            )
 
     schedule.every().day.at(args.time).do(job)
     log.info(f"다음 실행 예정: {schedule.next_run()}")

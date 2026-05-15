@@ -31,6 +31,7 @@ if sys.stderr.encoding and sys.stderr.encoding.lower() not in ("utf-8", "utf8"):
 ROOT = Path(__file__).resolve().parent.parent
 ETL_SCRIPT = ROOT / "etl" / "load_unipass_to_mysql.py"
 CLASSIFY_SCRIPT = ROOT / "classification" / "build_classification.py"
+AUTO_RULE_SCRIPT = ROOT / "classification" / "auto_rule_builder.py"
 
 # ── 환경변수 기본값 ───────────────────────────────────────────────────
 os.environ.setdefault("DB_HOST", "localhost")
@@ -174,6 +175,23 @@ def main():
         action="store_true",
         help="Rule 매칭 물품만 업데이트 (OpenAI 결과 보존)",
     )
+    parser.add_argument(
+        "--auto-rules",
+        action="store_true",
+        help="분류 완료 후 fallback 자동 규칙 생성 실행 (OPENAI_API_KEY 필요)",
+    )
+    parser.add_argument(
+        "--auto-rules-min-count",
+        type=int,
+        default=5,
+        help="자동 규칙 추가 최소 물품 수 (기본: 5)",
+    )
+    parser.add_argument(
+        "--auto-rules-confidence",
+        type=float,
+        default=0.85,
+        help="자동 규칙 추가 최소 confidence (기본: 0.85)",
+    )
     args = parser.parse_args()
 
     started = datetime.now()
@@ -223,6 +241,20 @@ def main():
         "use_openai": args.use_openai,
         "elapsed": elapsed,
     })
+
+    # ── STEP 3: 자동 규칙 생성 ───────────────────────────────────────────
+    if args.auto_rules and args.mode in ("full", "classify-only"):
+        auto_cmd = [
+            sys.executable,
+            str(AUTO_RULE_SCRIPT),
+            "--min-count", str(args.auto_rules_min_count),
+            "--confidence", str(args.auto_rules_confidence),
+        ]
+        if args.use_openai:
+            auto_cmd += ["--openai-model", args.openai_model]
+        ok = run_step("자동 규칙 생성 — auto_rule_builder", auto_cmd)
+        results["자동규칙"] = ok
+
     sys.exit(0 if all(results.values()) else 1)
 
 
