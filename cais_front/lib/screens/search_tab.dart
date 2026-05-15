@@ -24,6 +24,9 @@ class _SearchTabState extends State<SearchTab> {
   void initState() {
     super.initState();
     _ctrl = Get.find<AppController>();
+    ever(_ctrl.searchQuery, (String q) {
+      if (_inputCtrl.text != q) _inputCtrl.text = q;
+    });
   }
 
   @override

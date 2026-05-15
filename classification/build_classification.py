@@ -659,9 +659,18 @@ class OpenAIClassifier:
         self.client_mode: Optional[str] = None
         self.init_error: Optional[str] = None
         self.disabled_reason: Optional[str] = None
-        # target_level=2 → 중분류까지, target_level=3 → 소분류까지
+        # target_level=1 → 대분류만, target_level=2 → 중분류까지, target_level=3 → 소분류까지
         self.target_level = target_level
-        self.leaf_paths = resolver.get_mid_paths() if target_level <= 2 else resolver.get_leaf_paths()
+        if target_level >= 3:
+            self.leaf_paths = resolver.get_leaf_paths()
+        elif target_level == 2:
+            self.leaf_paths = resolver.get_mid_paths()
+        else:  # target_level == 1
+            self.leaf_paths = [
+                [node.name_ko]
+                for node in sorted(resolver.nodes.values(), key=lambda n: n.category_id)
+                if node.level == 1
+            ]
 
         api_key = os.getenv("OPENAI_API_KEY", "").strip()
         if not api_key:
