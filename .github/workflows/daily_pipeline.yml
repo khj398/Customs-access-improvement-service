@@ -30,6 +30,7 @@ jobs:
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       DB_NAME: customs_auction
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      LAMBDA_IMAGE_URL: ${{ secrets.LAMBDA_IMAGE_URL }}
 
     services:
       mysql:
@@ -57,7 +58,7 @@ jobs:
           cache: pip
 
       - name: 의존성 설치
-        run: pip install pymysql pyyaml openai mysql-connector-python playwright cryptography
+        run: pip install pymysql pyyaml openai mysql-connector-python playwright cryptography requests
 
       - name: Playwright 브라우저 설치
         run: playwright install chromium --with-deps
@@ -107,6 +108,9 @@ jobs:
           fi
           echo "실행 명령: $CMD"
           $CMD
+
+      - name: 이미지 수집 Lambda 트리거 + S3 URL 저장
+        run: python pipeline/trigger_image_lambda.py
 
       - name: 정확도 평가 리포트 업로드
         if: always()
