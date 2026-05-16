@@ -1,10 +1,28 @@
 USE customs_auction;
 
+-- ─────────────────────────────────────────────────────────
+-- [중복 L1 정리] seed_category.sql 실행 후 이 파일을 실행하면
+-- INSERT IGNORE가 parent_id IS NULL UNIQUE 제약이 없어 중복 행을 생성했음.
+-- 낮은 category_id(원본)를 남기고 높은 ID(중복)를 삭제한다.
+-- ─────────────────────────────────────────────────────────
+DELETE c2 FROM category c2
+INNER JOIN category c1
+  ON  c1.parent_id IS NULL
+  AND c2.parent_id IS NULL
+  AND c1.name_ko   = c2.name_ko
+  AND c1.category_id < c2.category_id;
+
 -- 확장 시드가 단독 실행되더라도 부모 카테고리를 최소 보장
-INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
-(NULL, 1, '자동차·공구', 'Automotive & Tools'),
-(NULL, 1, '부품·소모품', 'Parts & Consumables'),
-(NULL, 1, '스포츠·레저', 'Sports & Leisure');
+-- (NOT EXISTS 조건으로 중복 생성 방지)
+INSERT INTO category (parent_id, level, name_ko, name_en)
+SELECT NULL, 1, t.name_ko, t.name_en FROM (
+  SELECT '자동차·공구' AS name_ko, 'Automotive & Tools' AS name_en
+  UNION ALL SELECT '부품·소모품', 'Parts & Consumables'
+  UNION ALL SELECT '스포츠·레저', 'Sports & Leisure'
+) t
+WHERE NOT EXISTS (
+  SELECT 1 FROM category c WHERE c.parent_id IS NULL AND c.name_ko = t.name_ko
+);
 
 -- 부모 ID 가져오기
 SELECT category_id INTO @L1_AUTO   FROM category WHERE parent_id IS NULL AND name_ko='자동차·공구' LIMIT 1;
