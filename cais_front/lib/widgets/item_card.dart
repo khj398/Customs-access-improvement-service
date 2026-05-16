@@ -49,9 +49,9 @@ class ItemCard extends StatelessWidget {
                   Positioned(
                     top: 8, right: 8,
                     child: Obx(() {
-                      final liked = ctrl.isWished(item.id);
+                      final liked = ctrl.isWished(item.likeKey);
                       return GestureDetector(
-                        onTap: () => ctrl.toggleWish(item.id),
+                        onTap: () => ctrl.toggleWish(item),
                         child: Container(
                           width: 34, height: 34,
                           decoration: BoxDecoration(

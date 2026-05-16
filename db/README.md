@@ -16,13 +16,13 @@
   - 공매 상위 메타(기간/세관/보관처/상태)와 라인 단위 물품(물품명/수량/중량/가격), 이미지 메타를 분리 저장
 - **분류/검색 도메인 (`item_classification`, `item_search_token`)**
   - ETL 이후 물품명 기반 자동 분류 결과와 검색용 토큰(RAW/SYN/CATEGORY)을 저장
-- **사용자 도메인 (`app_user` 계열 테이블)**
-  - 회원, 소셜 연동, 관심대상, 알림 규칙/이력 등 사용자 기능 데이터를 저장
+- **사용자 도메인 (`app_user` 계열 테이블 — `customs_auction` 통합)**
+  - 회원, 소셜 연동, 관심대상, 알림 규칙/이력, 최근 검색어, 입찰/낙찰 이력 등 사용자 기능 데이터를 `customs_auction` 단일 스키마에서 관리
 
 ### 1-1. 데이터 흐름 한눈에 보기
 
 1. `schema_create.sql`(+선택 `schema_patch_v2.sql` → `schema_patch_v3.sql`)로 기본 스키마를 준비
-2. `schema_app_user_v1.sql`로 사용자 도메인 스키마를 추가
+2. `schema_app_user_unified_v1.sql`로 사용자 도메인 스키마를 `customs_auction`에 통합 추가 (**채택된 방식**)
 3. seed SQL(category/synonym)로 분류 기준 데이터를 적재
 4. ETL(`etl/load_unipass_to_mysql.py`)로 공매/물품/이미지 메타를 적재
 5. 분류(`classification/build_classification.py`)로 검색/분류 결과 생성
@@ -64,12 +64,15 @@ SQL 파일 내용을 통째로 복사해서 Workbench 쿼리 탭에 붙여넣어
   - `auction_item.atnt_cmdt`: `CHAR(1)` → `ENUM('Y','N')` (유효값 외 삽입 차단)
   > **주의**: `atnt_cmdt` 변경 전 `SELECT DISTINCT atnt_cmdt FROM auction_item;`으로 기존 값 확인 필요
 
-1-2) `schema_app_user_v1.sql`  
-- `app_user` 도메인(회원/소셜연동/관심대상/알림룰/알림이력) 스키마를 **별도 DB(`app_user`)** 로 생성한다.
+1-2) `schema_app_user_unified_v1.sql` ⭐ **채택된 방식**  
+- 사용자 도메인(회원/소셜연동/관심대상/알림룰/알림이력/최근검색어/입찰이력)을 **`customs_auction` 단일 스키마**에 통합 생성한다.
+- 백엔드(`cais_back/models/userModel.js`, `likeModel.js` 등)도 이 방식을 기준으로 작성되어 있다.
+- `USE customs_auction;` 상태에서 실행하면 된다.
 
-1-2-alt) `schema_app_user_unified_v1.sql`  
-- 사용자 도메인을 **현재 선택된 단일 DB(예: `customs_auction`)** 에 통합 생성한다.
-- D-1 데모처럼 운영 단순화가 필요할 때 사용한다.
+1-2-deprecated) `schema_app_user_v1.sql` ⛔ **폐기됨**  
+- 사용자 도메인을 **별도 DB(`app_user`)** 로 분리 생성하는 구 방식이다.
+- cross-DB 쿼리(`app_user.app_user`, `app_user.user_watchlist_target` 등)가 필요하여 운영이 복잡하다.
+- `schema_app_user_unified_v1.sql`로 대체되었으므로 실행하지 말 것.
 
 ---
 
@@ -151,7 +154,7 @@ python classification/build_classification.py
 
 1. `customs_auction` 스키마 생성 및 기본 DB 선택
 2. `schema_create.sql` 실행 (기존 데이터 유지가 필요하면 `schema_patch_v2.sql` → `schema_patch_v3.sql` 순서로 적용)
-3. `schema_app_user_v1.sql` 실행
+3. `schema_app_user_unified_v1.sql` 실행 (`customs_auction` 스키마 선택 상태에서 실행)
 4. `seed_category.sql` → `seed_category_extend.sql` 순서 실행
 5. `seed_synonym.sql` → `seed_synonym_extend.sql` 순서 실행
 6. `python etl/load_unipass_to_mysql.py` 실행

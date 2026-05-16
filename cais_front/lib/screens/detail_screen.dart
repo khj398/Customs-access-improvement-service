@@ -50,11 +50,11 @@ class DetailScreen extends StatelessWidget {
                             onTap: () => Get.back(),
                           ),
                           Obx(() {
-                            final liked = ctrl.isWished(item.id);
+                            final liked = ctrl.isWished(item.likeKey);
                             return _CircleBtn(
                               icon: liked ? Icons.favorite : Icons.favorite_border,
                               iconColor: liked ? _kDanger : Colors.black87,
-                              onTap: () => ctrl.toggleWish(item.id),
+                              onTap: () => ctrl.toggleWish(item),
                             );
                           }),
                         ],

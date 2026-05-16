@@ -3,8 +3,10 @@ import 'package:get/get.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../controllers/app_controller.dart';
 import '../models/item.dart';
+import '../services/api_service.dart';
 import '../utils/format.dart';
 import 'detail_screen.dart';
+import 'login_screen.dart';
 
 const _kPrimary = Color(0xFF3B82F6);
 const _kPrimaryDark = Color(0xFF171A3B);
@@ -44,12 +46,25 @@ class _MypageTabState extends State<MypageTab> {
                   child: const Icon(Icons.person, color: Color(0xFF3F7BE5), size: 30),
                 ),
                 const SizedBox(width: 12),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('test', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                    Text('test@test.com', style: TextStyle(color: Color(0xFF8B8D95), fontSize: 14)),
+                    Text(ApiService.userName.isNotEmpty ? ApiService.userName : '사용자',
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                    Text(ApiService.userEmail,
+                        style: const TextStyle(color: Color(0xFF8B8D95), fontSize: 14)),
                   ],
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () {
+                    Get.find<AppController>().wishlistIds.clear();
+                    ApiService.logout();
+                    Get.offAll(() => const LoginScreen(), transition: Transition.fadeIn);
+                  },
+                  icon: const Icon(Icons.logout, size: 16, color: Color(0xFF9CA3AF)),
+                  label: const Text('로그아웃',
+                      style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13)),
                 ),
               ],
             ),
@@ -93,7 +108,7 @@ class _MypageTabState extends State<MypageTab> {
                   ),
                   const SizedBox(height: 12),
                   Obx(() {
-                    final wishIds = ctrl.wishlistIds.toList();
+                    final wishIds = ctrl.wishlistIds.toSet();
                     return TableCalendar<AuctionItem>(
                       firstDay: DateTime(2026, 1, 1),
                       lastDay: DateTime(2027, 12, 31),
@@ -121,7 +136,7 @@ class _MypageTabState extends State<MypageTab> {
                       calendarBuilders: CalendarBuilders(
                         markerBuilder: (context, day, events) {
                           if (events.isEmpty) return const SizedBox.shrink();
-                          final hasWish = events.any((e) => wishIds.contains((e as AuctionItem).id));
+                          final hasWish = events.any((e) => wishIds.contains((e as AuctionItem).likeKey));
                           return Positioned(
                             bottom: 2,
                             child: Row(
@@ -165,10 +180,10 @@ class _MypageTabState extends State<MypageTab> {
     decoration: BoxDecoration(shape: BoxShape.circle, color: color),
   );
 
-  void _showDaySheet(BuildContext context, DateTime day, List<AuctionItem> items, List<int> wishIds) {
+  void _showDaySheet(BuildContext context, DateTime day, List<AuctionItem> items, Set<String> wishIds) {
     final sorted = [...items]..sort((a, b) {
-      final aW = wishIds.contains(a.id) ? 0 : 1;
-      final bW = wishIds.contains(b.id) ? 0 : 1;
+      final aW = wishIds.contains(a.likeKey) ? 0 : 1;
+      final bW = wishIds.contains(b.likeKey) ? 0 : 1;
       return aW - bW;
     });
 
@@ -207,7 +222,7 @@ class _MypageTabState extends State<MypageTab> {
                 child: ListView(
                   controller: scrollCtrl,
                   children: sorted.map((item) {
-                    final isWished = wishIds.contains(item.id);
+                    final isWished = wishIds.contains(item.likeKey);
                     return GestureDetector(
                       onTap: () {
                         Navigator.pop(context);

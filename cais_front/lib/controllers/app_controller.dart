@@ -14,7 +14,7 @@ class AppController extends GetxController {
   final currentPage = 1.obs;
   final hasMore = true.obs;
 
-  final wishlistIds = <int>[].obs;
+  final wishlistIds = <String>[].obs;
 
   // 카테고리 드릴다운 상태
   final l1Categories = <Map<String, dynamic>>[].obs;
@@ -46,6 +46,14 @@ class AppController extends GetxController {
     loadRootCategories();
     loadCategoryStats();
     loadItems();
+    loadWishlist();
+  }
+
+  Future<void> loadWishlist() async {
+    try {
+      final keys = await _api.fetchMyLikeKeys();
+      wishlistIds.assignAll(keys);
+    } catch (_) {}
   }
 
   Future<void> loadRootCategories() async {
@@ -176,17 +184,30 @@ class AppController extends GetxController {
     await loadItems();
   }
 
-  void toggleWish(int id) {
-    if (wishlistIds.contains(id)) {
-      wishlistIds.remove(id);
-      _toast('찜 목록에서 제거되었습니다');
+  Future<void> toggleWish(AuctionItem item) async {
+    final key = item.likeKey;
+    final wasWished = wishlistIds.contains(key);
+    // 즉시 UI 반영 (낙관적 업데이트)
+    if (wasWished) {
+      wishlistIds.remove(key);
     } else {
-      wishlistIds.add(id);
-      _toast('찜 목록에 추가되었습니다 ♥');
+      wishlistIds.add(key);
+    }
+    try {
+      await _api.toggleLike(item.pbacNoStr, item.pbacSrno, item.cmdtLnNo);
+      _toast(wasWished ? '찜 목록에서 제거되었습니다' : '찜 목록에 추가되었습니다 ♥');
+    } catch (e) {
+      // 실패 시 롤백
+      if (wasWished) {
+        wishlistIds.add(key);
+      } else {
+        wishlistIds.remove(key);
+      }
+      _toast('찜 처리에 실패했습니다');
     }
   }
 
-  bool isWished(int id) => wishlistIds.contains(id);
+  bool isWished(String key) => wishlistIds.contains(key);
 
   void _toast(String msg) {
     toastMessage.value = msg;
@@ -202,7 +223,7 @@ class AppController extends GetxController {
   }
 
   List<AuctionItem> get wishedItems =>
-      allItems.where((i) => wishlistIds.contains(i.id)).toList();
+      allItems.where((i) => wishlistIds.contains(i.likeKey)).toList();
 
   Map<String, List<AuctionItem>> get nearbyItems {
     final result = <String, List<AuctionItem>>{};

@@ -17,11 +17,21 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   final _ctrl = Get.find<AppController>();
+  Worker? _tabWorker;
 
   @override
   void initState() {
     super.initState();
-    ever(_ctrl.currentTab, (_) => setState(() {}));
+    _tabWorker = ever(_ctrl.currentTab, (_) {
+      if (mounted) setState(() {});
+    });
+    _ctrl.loadWishlist();
+  }
+
+  @override
+  void dispose() {
+    _tabWorker?.dispose();
+    super.dispose();
   }
 
   @override
