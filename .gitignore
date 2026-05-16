@@ -1,3 +1,19 @@
+# Node.js
+node_modules/
+
+# Flutter build
+cais_front/build/
+cais_front/.dart_tool/
+cais_front/.flutter-plugins
+cais_front/.flutter-plugins-dependencies
+
+# Claude Code internals
+.claude/
+
+# Temp / local
+.vscode/
+temp_page_1.json
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -14,8 +30,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
