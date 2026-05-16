@@ -131,6 +131,41 @@ class DetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     _LotTable(item: item),
+                    // 번들 구매 필수 물품 섹션
+                    Obx(() {
+                      final bundled = ctrl.getBundledItems(item);
+                      if (bundled.isEmpty) return const SizedBox.shrink();
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 20),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF8E7),
+                              border: Border.all(color: const Color(0xFFFFBD2E)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF9500), size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '이 공매는 ${bundled.length + 1}개 물품을 일괄 낙찰합니다.\n아래 물품도 반드시 함께 구매해야 합니다.',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, height: 1.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ...bundled.map((b) => _BundledCard(item: b)),
+                        ],
+                      );
+                    }),
                     const SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
@@ -181,6 +216,71 @@ class _CircleBtn extends StatelessWidget {
   }
 }
 
+String _formatKst(String raw) {
+  if (raw.isEmpty) return '-';
+  try {
+    final dt = DateTime.parse(raw.replaceAll(' ', 'T')).toUtc().add(const Duration(hours: 9));
+    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final wd = weekdays[dt.weekday - 1];
+    final ampm = dt.hour < 12 ? '오전' : '오후';
+    final h = dt.hour % 12 == 0 ? 12 : dt.hour % 12;
+    final m = dt.minute.toString().padLeft(2, '0');
+    return '${dt.year}년 ${dt.month}월 ${dt.day}일 ($wd) $ampm $h:$m';
+  } catch (_) {
+    return raw;
+  }
+}
+
+class _BundledCard extends StatelessWidget {
+  final AuctionItem item;
+  const _BundledCard({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Get.to(() => DetailScreen(item: item), preventDuplicates: false),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8F9FF),
+          border: Border.all(color: const Color(0xFFE2E4EA)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEAECF2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.inventory_2_outlined, size: 22, color: Color(0xFFA6ABB4)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                  const SizedBox(height: 2),
+                  Text('수량: ${item.qty}  ·  중량: ${item.wght}',
+                      style: const TextStyle(color: Color(0xFF8E919D), fontSize: 12)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, color: Color(0xFFC4C5CB), size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LotTable extends StatelessWidget {
   final AuctionItem item;
   const _LotTable({required this.item});
@@ -188,6 +288,7 @@ class _LotTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = [
+      ['공매번호', formatPbacNo(item.pbacNoStr)],
       ['세관명', item.customs],
       ['물품명', item.name],
       ['수량', item.qty],
@@ -195,8 +296,8 @@ class _LotTable extends StatelessWidget {
       ['공매예정가격', formatPriceFull(item.price)],
       ['보세구역', item.warehouse],
       ['분류', item.cat],
-      ['공매시작일시', item.startDate],
-      ['공매종료일시', item.endDate],
+      ['공매시작일시', _formatKst(item.startDate)],
+      ['공매종료일시', _formatKst(item.endDate)],
     ];
 
     return Column(

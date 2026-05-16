@@ -24,6 +24,16 @@ exports.searchItems = async (req, res) => {
   }
 };
 
+exports.getCategoryStats = async (req, res) => {
+  try {
+    const stats = await itemModel.getCategoryStats();
+    res.json({ stats });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+};
+
 exports.getCalendarItems = async (req, res) => {
   try {
     const year  = parseInt(req.query.year  || new Date().getFullYear());

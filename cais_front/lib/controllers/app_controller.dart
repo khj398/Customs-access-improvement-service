@@ -15,7 +15,22 @@ class AppController extends GetxController {
   final hasMore = true.obs;
 
   final wishlistIds = <int>[].obs;
-  final activeCategory = '전체'.obs;
+
+  // 카테고리 드릴다운 상태
+  final l1Categories = <Map<String, dynamic>>[].obs;
+  final l2Categories = <Map<String, dynamic>>[].obs;
+  final l3Categories = <Map<String, dynamic>>[].obs;
+  final activeL1 = Rxn<Map<String, dynamic>>();
+  final activeL2 = Rxn<Map<String, dynamic>>();
+  final activeL3 = Rxn<Map<String, dynamic>>();
+
+  int? get activeCategoryId =>
+      (activeL3.value?['categoryId'] ??
+       activeL2.value?['categoryId'] ??
+       activeL1.value?['categoryId']) as int?;
+
+  final categoryStats = <int, int>{}.obs; // categoryId → 물품 건수
+
   final searchQuery = ''.obs;
   final currentTab = 0.obs;
   final newDropsMode = false.obs;
@@ -28,7 +43,23 @@ class AppController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    loadRootCategories();
+    loadCategoryStats();
     loadItems();
+  }
+
+  Future<void> loadRootCategories() async {
+    try {
+      final cats = await _api.fetchCategories();
+      l1Categories.assignAll(cats);
+    } catch (_) {}
+  }
+
+  Future<void> loadCategoryStats() async {
+    try {
+      final stats = await _api.fetchCategoryStats();
+      categoryStats.assignAll(stats);
+    } catch (_) {}
   }
 
   @override
@@ -41,7 +72,11 @@ class AppController extends GetxController {
     isLoading.value = true;
     hasError.value = false;
     try {
-      final items = await _api.fetchItems(page: 1, limit: ApiConfig.defaultPageSize);
+      final items = await _api.fetchItems(
+        categoryId: activeCategoryId,
+        page: 1,
+        limit: ApiConfig.defaultPageSize,
+      );
       allItems.assignAll(items);
       currentPage.value = 1;
       hasMore.value = items.length >= ApiConfig.defaultPageSize;
@@ -63,6 +98,7 @@ class AppController extends GetxController {
       final nextPage = currentPage.value + 1;
       final items = await _api.fetchItems(
         keyword: searchQuery.value.isEmpty ? null : searchQuery.value,
+        categoryId: activeCategoryId,
         page: nextPage,
         limit: ApiConfig.defaultPageSize,
       );
@@ -85,6 +121,7 @@ class AppController extends GetxController {
       try {
         final items = await _api.fetchItems(
           keyword: query.isEmpty ? null : query,
+          categoryId: activeCategoryId,
           page: 1,
           limit: ApiConfig.defaultPageSize,
         );
@@ -101,6 +138,42 @@ class AppController extends GetxController {
         isLoading.value = false;
       }
     });
+  }
+
+  Future<void> selectL1Category(Map<String, dynamic>? cat) async {
+    newDropsMode.value = false;
+    activeL1.value = cat;
+    activeL2.value = null;
+    activeL3.value = null;
+    l2Categories.clear();
+    l3Categories.clear();
+    if (cat != null) {
+      try {
+        final children = await _api.fetchSubCategories(cat['categoryId'] as int);
+        l2Categories.assignAll(children);
+      } catch (_) {}
+    }
+    await loadItems();
+  }
+
+  Future<void> selectL2Category(Map<String, dynamic>? cat) async {
+    newDropsMode.value = false;
+    activeL2.value = cat;
+    activeL3.value = null;
+    l3Categories.clear();
+    if (cat != null) {
+      try {
+        final children = await _api.fetchSubCategories(cat['categoryId'] as int);
+        l3Categories.assignAll(children);
+      } catch (_) {}
+    }
+    await loadItems();
+  }
+
+  Future<void> selectL3Category(Map<String, dynamic>? cat) async {
+    newDropsMode.value = false;
+    activeL3.value = cat;
+    await loadItems();
   }
 
   void toggleWish(int id) {
@@ -122,14 +195,10 @@ class AppController extends GetxController {
   }
 
   List<AuctionItem> get filteredItems {
-    var list = List<AuctionItem>.from(allItems);
     if (newDropsMode.value) {
-      return list.where((i) => i.status == '진행중').toList();
+      return allItems.where((i) => i.status == '진행중').toList();
     }
-    if (activeCategory.value != '전체') {
-      list = list.where((i) => i.cat == activeCategory.value).toList();
-    }
-    return list;
+    return List<AuctionItem>.from(allItems);
   }
 
   List<AuctionItem> get wishedItems =>
@@ -144,6 +213,13 @@ class AppController extends GetxController {
     return result;
   }
 
+  /// 같은 공매번호(pbacNo)에 속하는 다른 물품 목록 (번들 구매 필수 물품)
+  List<AuctionItem> getBundledItems(AuctionItem target) {
+    return allItems.where((i) =>
+        i.pbacNoStr == target.pbacNoStr && i.cmdtLnNo != target.cmdtLnNo
+    ).toList();
+  }
+
   List<AuctionItem> getItemsForDay(DateTime day) {
     return allItems.where((i) {
       final d = i.endDay;
@@ -154,7 +230,11 @@ class AppController extends GetxController {
   void goToSearch({bool newDrops = false}) {
     newDropsMode.value = newDrops;
     if (!newDrops) {
-      activeCategory.value = '전체';
+      activeL1.value = null;
+      activeL2.value = null;
+      activeL3.value = null;
+      l2Categories.clear();
+      l3Categories.clear();
       searchQuery.value = '';
     }
     currentTab.value = 1;

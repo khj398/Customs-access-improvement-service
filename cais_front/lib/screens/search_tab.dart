@@ -1,3 +1,4 @@
+import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/app_controller.dart';
@@ -6,7 +7,14 @@ import '../widgets/item_card.dart';
 const _kPrimary = Color(0xFF3B82F6);
 const _kPrimaryDark = Color(0xFF171A3B);
 
-const _kCategories = ['전체', '산업·장비', '전자·전기', '가전', '생활·주방', '식품·음료', '의류·패션잡화', '기타'];
+class _MouseDragScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.stylus,
+  };
+}
 
 class SearchTab extends StatefulWidget {
   const SearchTab({super.key});
@@ -112,38 +120,39 @@ class _SearchTabState extends State<SearchTab> {
                 }),
                 const SizedBox(height: 14),
 
-                // Category chips
-                Obx(() => SizedBox(
-                  height: 42,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _kCategories.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (_, i) {
-                      final cat = _kCategories[i];
-                      final active = _ctrl.activeCategory.value == cat;
-                      return GestureDetector(
-                        onTap: () {
-                          _ctrl.activeCategory.value = cat;
-                          _ctrl.newDropsMode.value = false;
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: active ? _kPrimaryDark : const Color(0xFFE7E8EC),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(cat,
-                              style: TextStyle(
-                                color: active ? Colors.white : const Color(0xFF7C7F8A),
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                              )),
-                        ),
-                      );
-                    },
-                  ),
-                )),
+                // Category drilldown chips (대분류 → 중분류 → 소분류)
+                Obx(() {
+                  final l1 = _ctrl.l1Categories.toList();
+                  final l2 = _ctrl.l2Categories.toList();
+                  final l3 = _ctrl.l3Categories.toList();
+                  final activeL1Id = _ctrl.activeL1.value?['categoryId'] as int?;
+                  final activeL2Id = _ctrl.activeL2.value?['categoryId'] as int?;
+                  final activeL3Id = _ctrl.activeL3.value?['categoryId'] as int?;
+
+                  final stats = Map<int, int>.from(_ctrl.categoryStats);
+
+                  if (l1.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _chipRow(l1, activeL1Id, 42, 14,
+                          const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                          (cat) => _ctrl.selectL1Category(cat), stats: stats),
+                      if (l2.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        _chipRow(l2, activeL2Id, 36, 12,
+                            const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                            (cat) => _ctrl.selectL2Category(cat), stats: stats),
+                      ],
+                      if (l3.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        _chipRow(l3, activeL3Id, 32, 11,
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            (cat) => _ctrl.selectL3Category(cat), stats: stats),
+                      ],
+                    ],
+                  );
+                }),
                 const SizedBox(height: 16),
               ],
             ),
@@ -213,6 +222,73 @@ class _SearchTabState extends State<SearchTab> {
             }),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _chipRow(
+    List<Map<String, dynamic>> cats,
+    int? activeId,
+    double height,
+    double fontSize,
+    EdgeInsets padding,
+    void Function(Map<String, dynamic>?) onSelect, {
+    Map<int, int> stats = const {},
+  }) {
+    return SizedBox(
+      height: height,
+      child: ScrollConfiguration(
+        behavior: _MouseDragScrollBehavior(),
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          itemCount: cats.length + 1,
+          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (_, i) {
+            if (i == 0) {
+              return _chip('전체', activeId == null, padding, fontSize, () => onSelect(null));
+            }
+            final cat = cats[i - 1];
+            final catId = cat['categoryId'] as int?;
+            final count = catId != null ? (stats[catId] ?? 0) : 0;
+            final isActive = activeId == catId;
+            return _chip(cat['nameKo'] as String, isActive, padding, fontSize,
+                () => onSelect(cat), count: count);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _chip(String label, bool active, EdgeInsets padding, double fontSize,
+      VoidCallback onTap, {int count = 0}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: active ? _kPrimaryDark : const Color(0xFFE7E8EC),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label,
+                style: TextStyle(
+                  color: active ? Colors.white : const Color(0xFF7C7F8A),
+                  fontWeight: FontWeight.w700,
+                  fontSize: fontSize,
+                )),
+            if (count > 0) ...[
+              const SizedBox(width: 4),
+              Text('$count',
+                  style: TextStyle(
+                    color: active ? Colors.white.withOpacity(0.75) : const Color(0xFFADB0BA),
+                    fontWeight: FontWeight.w600,
+                    fontSize: fontSize - 1,
+                  )),
+            ],
+          ],
+        ),
       ),
     );
   }

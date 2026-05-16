@@ -17,7 +17,7 @@ class ApiService {
 
   Future<List<AuctionItem>> fetchItems({
     String? keyword,
-    String? categoryId,
+    int? categoryId,
     String? cstmSgn,
     int page = 1,
     int limit = ApiConfig.defaultPageSize,
@@ -27,7 +27,7 @@ class ApiService {
       'limit': '$limit',
     };
     if (keyword != null && keyword.isNotEmpty) params['keyword'] = keyword;
-    if (categoryId != null) params['categoryId'] = categoryId;
+    if (categoryId != null) params['categoryId'] = categoryId.toString();
     if (cstmSgn != null) params['cstmSgn'] = cstmSgn;
 
     final uri = Uri.parse('$_base/api/items/search').replace(queryParameters: params);
@@ -43,6 +43,40 @@ class ApiService {
       rethrow;
     } catch (e) {
       throw ApiException('네트워크 오류: $e');
+    }
+  }
+
+  Future<Map<int, int>> fetchCategoryStats() async {
+    final uri = Uri.parse('$_base/api/items/category-stats');
+    try {
+      final res = await http.get(uri).timeout(_timeout);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      final raw = body['stats'] as Map<String, dynamic>? ?? {};
+      return raw.map((k, v) => MapEntry(int.tryParse(k) ?? 0, (v as num).toInt()));
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchCategories() async {
+    final uri = Uri.parse('$_base/api/categories');
+    try {
+      final res = await http.get(uri).timeout(_timeout);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      return List<Map<String, dynamic>>.from(body['categories'] as List? ?? []);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchSubCategories(int parentId) async {
+    final uri = Uri.parse('$_base/api/categories/$parentId/children');
+    try {
+      final res = await http.get(uri).timeout(_timeout);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      return List<Map<String, dynamic>>.from(body['categories'] as List? ?? []);
+    } catch (_) {
+      return [];
     }
   }
 

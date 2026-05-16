@@ -157,6 +157,7 @@ class HomeTab extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Obx(() {
+              ctrl.isLoading.value; // nearbyItems는 computed getter → 명시적 reactive 등록 필요
               final nearby = ctrl.nearbyItems;
               if (nearby.isEmpty) {
                 return const Padding(

@@ -89,6 +89,40 @@ exports.search = async ({ keyword, categoryId, cstmSgn, page = 1, limit = 20, us
   return rows;
 };
 
+// 카테고리별 물품 건수 (계층 롤업 포함)
+exports.getCategoryStats = async () => {
+  // L3 단위 직접 매핑된 건수
+  const [rows] = await pool.query(`
+    SELECT ic.category_id,
+           COUNT(DISTINCT CONCAT(ic.pbac_no, '-', ic.pbac_srno, '-', ic.cmdt_ln_no)) AS cnt
+    FROM item_classification ic
+    GROUP BY ic.category_id
+  `);
+
+  // 전체 카테고리 트리
+  const [cats] = await pool.query(`
+    SELECT category_id, parent_id, level
+    FROM category
+    WHERE is_active = 1
+  `);
+
+  // 직접 건수 맵 초기화
+  const countMap = {};
+  for (const c of cats) countMap[c.category_id] = 0;
+  for (const r of rows) countMap[r.category_id] = Number(r.cnt);
+
+  // L3 → L2 롤업
+  for (const c of cats.filter(c => c.level === 3 && c.parent_id)) {
+    countMap[c.parent_id] = (countMap[c.parent_id] || 0) + (countMap[c.category_id] || 0);
+  }
+  // L2 → L1 롤업
+  for (const c of cats.filter(c => c.level === 2 && c.parent_id)) {
+    countMap[c.parent_id] = (countMap[c.parent_id] || 0) + (countMap[c.category_id] || 0);
+  }
+
+  return countMap;
+};
+
 // 물품 상세
 exports.findOne = async (pbacNo, pbacSrno, cmdtLnNo) => {
   const [rows] = await pool.query(`

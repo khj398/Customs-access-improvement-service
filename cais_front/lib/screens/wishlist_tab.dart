@@ -25,6 +25,8 @@ class WishlistTab extends StatelessWidget {
             const SizedBox(height: 16),
             Expanded(
               child: Obx(() {
+                ctrl.allItems.length; // wishedItems는 computed getter → 명시적 reactive 등록 필요
+                ctrl.wishlistIds.length;
                 final wished = ctrl.wishedItems;
                 if (wished.isEmpty) {
                   return const Center(
@@ -81,7 +83,7 @@ class WishlistTab extends StatelessWidget {
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                                   const SizedBox(height: 4),
-                                  Text(formatPrice(item.price),
+                                  Text(formatPriceFull(item.price),
                                       style: const TextStyle(color: _kPrimary, fontWeight: FontWeight.w800)),
                                 ],
                               ),

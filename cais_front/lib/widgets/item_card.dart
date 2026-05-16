@@ -85,7 +85,7 @@ class ItemCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    formatPrice(item.price),
+                    formatPriceFull(item.price),
                     style: const TextStyle(color: _kPrimary, fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                 ],

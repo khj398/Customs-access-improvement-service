@@ -13,6 +13,9 @@ const optionalAuth = require('../middleware/optionalAuth');
 // 물품 검색
 router.get('/search', optionalAuth, itemController.searchItems);
 
+// 카테고리별 물품 건수 (반드시 /:pbacNo/... 앞에 위치)
+router.get('/category-stats', itemController.getCategoryStats);
+
 // 달력용 — 특정 연월에 마감되는 물품 목록 (반드시 /:pbacNo/... 앞에 위치)
 router.get('/calendar', optionalAuth, itemController.getCalendarItems);
 
