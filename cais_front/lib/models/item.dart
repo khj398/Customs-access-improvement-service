@@ -89,4 +89,7 @@ class AuctionItem {
     final dt = endDateTime;
     return DateTime(dt.year, dt.month, dt.day);
   }
+
+  /// DB의 (pbacNo, pbacSrno, cmdtLnNo) 복합키를 단일 문자열로 표현
+  String get likeKey => '${pbacNoStr}_${pbacSrno}_$cmdtLnNo';
 }

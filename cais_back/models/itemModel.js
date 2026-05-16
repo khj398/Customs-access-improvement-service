@@ -9,9 +9,8 @@ const pool = require('../config/db');
 exports.search = async ({ keyword, categoryId, cstmSgn, page = 1, limit = 20, userId = null }) => {
   const offset = (page - 1) * limit;
 
-  // ── 좋아요 LEFT JOIN (로그인 사용자만) — app_user.user_watchlist_target 참조 ──
   const likesJoin = userId
-    ? `LEFT JOIN app_user.user_watchlist_target l
+    ? `LEFT JOIN user_watchlist_target l
          ON l.user_id = ? AND l.target_level = 'ITEM'
         AND l.pbac_no = ai.pbac_no AND l.pbac_srno = ai.pbac_srno AND l.cmdt_ln_no = ai.cmdt_ln_no`
     : '';

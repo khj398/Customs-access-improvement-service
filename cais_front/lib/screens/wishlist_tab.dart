@@ -89,7 +89,7 @@ class WishlistTab extends StatelessWidget {
                               ),
                             ),
                             IconButton(
-                              onPressed: () => ctrl.toggleWish(item.id),
+                              onPressed: () => ctrl.toggleWish(item),
                               icon: const Icon(Icons.favorite, color: _kDanger, size: 24),
                             ),
                           ],

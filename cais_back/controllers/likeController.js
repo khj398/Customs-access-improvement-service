@@ -5,6 +5,16 @@ controllers/likeController.js
 
 const likeModel = require('../models/likeModel');
 
+exports.getMyLikeKeys = async (req, res) => {
+  try {
+    const keys = await likeModel.findMyLikeKeys(req.user.userId);
+    res.json({ keys });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+};
+
 exports.getMyLikes = async (req, res) => {
   try {
     const likes = await likeModel.findMyLikes(req.user.userId);

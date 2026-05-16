@@ -133,6 +133,45 @@ class ApiService {
     }
   }
 
+  Future<List<String>> fetchMyLikeKeys() async {
+    if (!isLoggedIn) return [];
+    try {
+      final res = await http.get(
+        Uri.parse('$_base/api/likes/keys'),
+        headers: _authHeaders(),
+      ).timeout(_timeout);
+      if (res.statusCode != 200) return [];
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final keys = data['keys'] as List? ?? [];
+      return keys.map((e) {
+        final m = e as Map<String, dynamic>;
+        final srno = _toInt(m['pbacSrno']);
+        final ln   = _toInt(m['cmdtLnNo']);
+        return '${m['pbacNo']}_${srno}_$ln';
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  static int _toInt(dynamic v) =>
+      v is num ? v.toInt() : int.tryParse(v?.toString() ?? '') ?? 0;
+
+  Future<bool> toggleLike(String pbacNo, int pbacSrno, int cmdtLnNo) async {
+    final res = await http.post(
+      Uri.parse('$_base/api/likes/toggle'),
+      headers: _authHeaders(),
+      body: jsonEncode({
+        'pbacNo': pbacNo,
+        'pbacSrno': pbacSrno.toString(),
+        'cmdtLnNo': cmdtLnNo.toString(),
+      }),
+    ).timeout(_timeout);
+    if (res.statusCode != 200) throw ApiException('찜 처리 실패', statusCode: res.statusCode);
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    return data['liked'] as bool;
+  }
+
   Future<List<AuctionItem>> fetchCalendarItems({
     required int year,
     required int month,

@@ -9,6 +9,7 @@ import 'services/api_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GetStorage.init();
+  Get.put(AppController());
   runApp(const CaisApp());
 }
 
@@ -17,7 +18,6 @@ class CaisApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Get.put(AppController());
     return GetMaterialApp(
       title: '세관 경매 서비스',
       debugShowCheckedModeBanner: false,

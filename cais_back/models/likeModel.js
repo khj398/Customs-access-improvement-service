@@ -36,6 +36,15 @@ exports.findMyLikes = async (userId) => {
   return rows;
 };
 
+exports.findMyLikeKeys = async (userId) => {
+  const [rows] = await pool.query(`
+    SELECT pbac_no AS pbacNo, pbac_srno AS pbacSrno, cmdt_ln_no AS cmdtLnNo
+    FROM user_watchlist_target
+    WHERE user_id = ? AND target_level = 'ITEM'
+  `, [userId]);
+  return rows;
+};
+
 exports.exists = async (userId, pbacNo, pbacSrno, cmdtLnNo) => {
   const [rows] = await pool.query(`
     SELECT watch_target_id AS likeId
