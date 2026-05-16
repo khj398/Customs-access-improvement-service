@@ -522,14 +522,13 @@ def build_rules(rules_path: Optional[str] = None) -> List[Rule]:
 def match_rule(
     tokens: Set[str],
     rules: List[Rule],
-    korean_tokens: Optional[Set[str]] = None,
+    ko_text: str = "",
 ) -> Optional[Tuple[Rule, Set[str]]]:
     """첫 매칭 룰을 반환 + 매칭된 키워드 집합."""
-    ko_tokens = korean_tokens or set()
     for rule in rules:
-        # ── 한국어 키워드 우선 매칭 ──────────────────────────────────────────
-        if rule.keywords_ko:
-            ko_matched = {kw for kw in rule.keywords_ko if kw in ko_tokens}
+        # ── 한국어 키워드 우선 매칭 (부분문자열 검색) ────────────────────────
+        if rule.keywords_ko and ko_text:
+            ko_matched = {kw for kw in rule.keywords_ko if kw in ko_text}
             if ko_matched:
                 return rule, ko_matched
 
@@ -1037,10 +1036,9 @@ def main():
 
                 norm = normalize_text(cmdt_nm)
                 raw_tokens = extract_raw_tokens(norm)
-                ko_tokens = set(re.findall(r"[가-힣]{2,}", cmdt_nm))
 
                 # --- classify
-                m = match_rule(raw_tokens, rules, korean_tokens=ko_tokens)
+                m = match_rule(raw_tokens, rules, ko_text=cmdt_nm)
                 model_name = "rule"
                 model_ver = args.model_ver
                 rule_matched = False
