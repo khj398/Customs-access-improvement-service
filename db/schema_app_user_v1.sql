@@ -1,7 +1,9 @@
 /* =========================================================
-   app_user v1 schema
-   - docs/DB_REDESIGN_DISCUSSION.md 기준
-   - 로컬+소셜 로그인, LOT/ITEM 관심대상, APP_PUSH 알림
+   [폐기됨 — DEPRECATED]
+   app_user 별도 스키마 방식 (A안)
+   - 별도 app_user 데이터베이스를 생성하는 방식
+   - schema_app_user_unified_v1.sql (customs_auction 통합 방식)으로 대체됨
+   - 참고용으로만 보존, 실행하지 말 것
    ========================================================= */
 
 CREATE DATABASE IF NOT EXISTS app_user

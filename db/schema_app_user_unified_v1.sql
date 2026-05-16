@@ -1,13 +1,11 @@
 /* =========================================================
-   app_user v1 schema (single-schema / unified)
-   - 목적: customs_auction 같은 단일 스키마 내부에 사용자 도메인을 통합
-   - 전제: 실행 전에 대상 DB를 선택(예: USE customs_auction;)
-   - 참고: 기존 db/schema_app_user_v1.sql(분리 스키마 방식)와 기능은 동일
+   사용자 도메인 스키마 (customs_auction 통합 버전) — 채택된 방식
+   - 모든 유저 관련 테이블을 customs_auction 단일 스키마에서 관리
+   - schema_app_user_v1.sql (별도 app_user 스키마 방식)은 폐기됨
+   - 실행: USE customs_auction; 후 이 파일 실행
    ========================================================= */
 
-/* 예시
 USE customs_auction;
-*/
 
 CREATE TABLE IF NOT EXISTS app_user (
   user_id BIGINT NOT NULL AUTO_INCREMENT,

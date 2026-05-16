@@ -1,17 +1,12 @@
 /*
 models/userModel.js
-사용자 DB 모델 — app_user 스키마 사용
-  app_user.app_user    : user_id, email, password_hash, status, ...
-  app_user.user_profile: user_id, nickname, locale, ...
-
-동일 MySQL 서버 내 cross-DB 쿼리로 접근.
-authController.js 등 기존 코드가 사용하는 필드명(userId, userEmail,
-userPassword, userName, preferredCstmSgn)을 AS 별칭으로 그대로 유지한다.
+사용자 DB 모델 — customs_auction 스키마 사용 (단일 스키마 통합 방식)
+  app_user      : user_id, email, password_hash, status, ...
+  user_profile  : user_id, nickname, locale, ...
 */
 
 const pool = require('../config/db');
 
-// SELECT 시 공통 컬럼 별칭
 const SELECT_COLS = `
   au.user_id       AS userId,
   au.email         AS userEmail,
@@ -24,8 +19,8 @@ const SELECT_COLS = `
 exports.findByEmail = async (email) => {
   const [rows] = await pool.query(
     `SELECT ${SELECT_COLS}
-     FROM app_user.app_user au
-     LEFT JOIN app_user.user_profile up ON au.user_id = up.user_id
+     FROM app_user au
+     LEFT JOIN user_profile up ON au.user_id = up.user_id
      WHERE au.email = ? AND au.status = 'ACTIVE'`,
     [email]
   );
@@ -35,8 +30,8 @@ exports.findByEmail = async (email) => {
 exports.findById = async (id) => {
   const [rows] = await pool.query(
     `SELECT ${SELECT_COLS}
-     FROM app_user.app_user au
-     LEFT JOIN app_user.user_profile up ON au.user_id = up.user_id
+     FROM app_user au
+     LEFT JOIN user_profile up ON au.user_id = up.user_id
      WHERE au.user_id = ? AND au.status = 'ACTIVE'`,
     [id]
   );
@@ -48,16 +43,14 @@ exports.create = async (userEmail, hashedPassword, userName) => {
   try {
     await conn.beginTransaction();
 
-    // 1) 기본 계정 생성
     const [result] = await conn.query(
-      `INSERT INTO app_user.app_user (email, password_hash) VALUES (?, ?)`,
+      `INSERT INTO app_user (email, password_hash) VALUES (?, ?)`,
       [userEmail, hashedPassword]
     );
     const userId = result.insertId;
 
-    // 2) 프로필 생성
     await conn.query(
-      `INSERT INTO app_user.user_profile (user_id, nickname) VALUES (?, ?)`,
+      `INSERT INTO user_profile (user_id, nickname) VALUES (?, ?)`,
       [userId, userName]
     );
 
@@ -79,7 +72,6 @@ exports.update = async (id, data) => {
     values.push(data.userName);
   }
   if (data.preferredCstmSgn !== undefined) {
-    // locale 컬럼을 관심 세관 코드 임시 저장 필드로 활용
     updates.push('locale = ?');
     values.push(data.preferredCstmSgn);
   }
@@ -87,14 +79,14 @@ exports.update = async (id, data) => {
 
   values.push(id);
   await pool.query(
-    `UPDATE app_user.user_profile SET ${updates.join(', ')} WHERE user_id = ?`,
+    `UPDATE user_profile SET ${updates.join(', ')} WHERE user_id = ?`,
     values
   );
 };
 
 exports.checkEmailExists = async (email) => {
   const [rows] = await pool.query(
-    `SELECT COUNT(*) AS cnt FROM app_user.app_user WHERE email = ?`,
+    `SELECT COUNT(*) AS cnt FROM app_user WHERE email = ?`,
     [email]
   );
   return rows[0].cnt > 0;

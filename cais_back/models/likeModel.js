@@ -1,13 +1,11 @@
 /*
 models/likeModel.js
-찜(likes) DB 모델 — app_user.user_watchlist_target 테이블 사용
+찜(likes) DB 모델 — customs_auction.user_watchlist_target 테이블 사용
   target_level = 'ITEM' 인 행만 찜으로 취급한다.
-  customs_auction 스키마 테이블은 schema.table 표기로 cross-DB 조인.
 */
 
 const pool = require('../config/db');
 
-// 내 찜 목록 조회
 exports.findMyLikes = async (userId) => {
   const [rows] = await pool.query(`
     SELECT
@@ -24,7 +22,7 @@ exports.findMyLikes = async (userId) => {
       co.cstm_name       AS cstmName,
       ic.category_id     AS categoryId,
       c.name_ko          AS categoryName
-    FROM app_user.user_watchlist_target wt
+    FROM user_watchlist_target wt
     JOIN auction_item ai
       ON wt.pbac_no = ai.pbac_no AND wt.pbac_srno = ai.pbac_srno AND wt.cmdt_ln_no = ai.cmdt_ln_no
     JOIN auction a ON wt.pbac_no = a.pbac_no
@@ -38,41 +36,37 @@ exports.findMyLikes = async (userId) => {
   return rows;
 };
 
-// 찜 여부 확인
 exports.exists = async (userId, pbacNo, pbacSrno, cmdtLnNo) => {
   const [rows] = await pool.query(`
     SELECT watch_target_id AS likeId
-    FROM app_user.user_watchlist_target
+    FROM user_watchlist_target
     WHERE user_id = ? AND target_level = 'ITEM'
       AND pbac_no = ? AND pbac_srno = ? AND cmdt_ln_no = ?
   `, [userId, pbacNo, pbacSrno, cmdtLnNo]);
   return rows[0];
 };
 
-// 찜 추가
 exports.add = async (userId, pbacNo, pbacSrno, cmdtLnNo) => {
   const [result] = await pool.query(`
-    INSERT INTO app_user.user_watchlist_target
+    INSERT INTO user_watchlist_target
       (user_id, target_level, pbac_no, pbac_srno, cmdt_ln_no)
     VALUES (?, 'ITEM', ?, ?, ?)
   `, [userId, pbacNo, pbacSrno, cmdtLnNo]);
   return result.insertId;
 };
 
-// 찜 취소
 exports.remove = async (userId, pbacNo, pbacSrno, cmdtLnNo) => {
   await pool.query(`
-    DELETE FROM app_user.user_watchlist_target
+    DELETE FROM user_watchlist_target
     WHERE user_id = ? AND target_level = 'ITEM'
       AND pbac_no = ? AND pbac_srno = ? AND cmdt_ln_no = ?
   `, [userId, pbacNo, pbacSrno, cmdtLnNo]);
 };
 
-// 찜 수 조회
 exports.count = async (pbacNo, pbacSrno, cmdtLnNo) => {
   const [rows] = await pool.query(`
     SELECT COUNT(*) AS cnt
-    FROM app_user.user_watchlist_target
+    FROM user_watchlist_target
     WHERE target_level = 'ITEM'
       AND pbac_no = ? AND pbac_srno = ? AND cmdt_ln_no = ?
   `, [pbacNo, pbacSrno, cmdtLnNo]);
