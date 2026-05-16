@@ -15,11 +15,11 @@ import pymysql
 # =========================================================
 def build_db_config() -> dict[str, Any]:
     return {
-        "host": os.getenv("MYSQL_HOST", "127.0.0.1"),
-        "port": int(os.getenv("MYSQL_PORT", "3306")),
-        "user": os.getenv("MYSQL_USER", "root"),
-        "password": os.getenv("MYSQL_PASSWORD", "Staver12^^"),
-        "database": os.getenv("MYSQL_DATABASE", "customs_auction"),
+        "host": os.getenv("DB_HOST", "127.0.0.1"),
+        "port": int(os.getenv("DB_PORT", "3306")),
+        "user": os.getenv("DB_USER", "root"),
+        "password": os.getenv("DB_PASSWORD", ""),
+        "database": os.getenv("DB_NAME", "customs_auction"),
         "charset": "utf8mb4",
         "cursorclass": pymysql.cursors.DictCursor,
         "autocommit": False,
