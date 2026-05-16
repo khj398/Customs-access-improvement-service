@@ -70,7 +70,11 @@ class AuctionItem {
       qty: qty,
       wght: wght,
       warehouse: json['snarName'] ?? '-',
-      images: const [],
+      images: (json['imageUrls'] as String?)
+              ?.split('|')
+              .where((s) => s.isNotEmpty)
+              .toList() ??
+          const [],
     );
   }
 

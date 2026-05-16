@@ -29,16 +29,17 @@ class DetailScreen extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFFE0E1E5), Color(0xFFD0D2D8)],
-                      ),
-                    ),
-                    child: const Icon(Icons.inventory_2_outlined, size: 80, color: Color(0xFFA6ABB4)),
-                  ),
+                  item.images.isNotEmpty
+                      ? Image.network(
+                          item.images.first,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          errorBuilder: (_, __, ___) => _detailPlaceholder(),
+                          loadingBuilder: (_, child, progress) =>
+                              progress == null ? child : _detailPlaceholder(),
+                        )
+                      : _detailPlaceholder(),
                   SafeArea(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -215,6 +216,17 @@ class _CircleBtn extends StatelessWidget {
     );
   }
 }
+
+Widget _detailPlaceholder() => Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFE0E1E5), Color(0xFFD0D2D8)],
+        ),
+      ),
+      child: const Icon(Icons.inventory_2_outlined, size: 80, color: Color(0xFFA6ABB4)),
+    );
 
 String _formatKst(String raw) {
   if (raw.isEmpty) return '-';

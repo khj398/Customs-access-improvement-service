@@ -15,7 +15,10 @@ class HomeTab extends StatelessWidget {
     final ctrl = Get.find<AppController>();
 
     return SafeArea(
-      child: SingleChildScrollView(
+      child: RefreshIndicator(
+        onRefresh: ctrl.loadItems,
+        child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,6 +174,7 @@ class HomeTab extends StatelessWidget {
             }),
           ],
         ),
+      ),
       ),
     );
   }
