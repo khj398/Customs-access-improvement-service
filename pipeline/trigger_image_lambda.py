@@ -64,11 +64,20 @@ def fetch_items(conn) -> list[dict]:
         return cur.fetchall()
 
 
+def to_s3_key(pbac_no: str) -> str:
+    """DB 공매번호(14자, 대시 없음) → S3 경로 키(대시 포함) 변환
+    예: '03026029000022' → '030-26-02-900002-2'
+    """
+    return f"{pbac_no[0:3]}-{pbac_no[3:5]}-{pbac_no[5:7]}-{pbac_no[7:13]}-{pbac_no[13]}"
+
+
 def probe_images(pbac_no: str, cmdt_ln_no: str) -> list[str]:
     """S3에 실제로 존재하는 이미지 URL 목록 반환 (200이면 존재, 403이면 없음)"""
+    s3_key = to_s3_key(pbac_no)
+    line_no = str(int(cmdt_ln_no))  # '001' → '1'
     urls = []
     for i in range(MAX_IMAGES_PER_ITEM):
-        url = f"{S3_BASE}/{pbac_no}/{pbac_no}_{cmdt_ln_no}_{i}.gif"
+        url = f"{S3_BASE}/{s3_key}/{s3_key}_{line_no}_{i}.gif"
         try:
             res = requests.head(url, timeout=5)
             if res.status_code == 200:
