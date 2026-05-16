@@ -879,12 +879,19 @@ class OpenAIClassifier:
         normalized = [str(x).strip() for x in path if str(x).strip()]
         path_str = " > ".join(normalized)
         if path_str not in allowed_paths:
-            # 허용 경로에 없으면 alternative 시도
-            if alternative and isinstance(alternative, str):
+            # leaf_paths에 없어도 DB에서 resolve 가능하면 허용 (L2 경로 등)
+            if self.resolver.resolve_path(normalized) is not None:
+                confidence = max(0.55, confidence - 0.05)
+            elif alternative and isinstance(alternative, str):
                 alt_parts = [p.strip() for p in alternative.split(">") if p.strip()]
-                if " > ".join(alt_parts) in allowed_paths:
+                alt_str = " > ".join(alt_parts)
+                if alt_str in allowed_paths:
                     normalized = alt_parts
                     confidence = max(0.55, confidence - 0.10)
+                    reason = f"[alt] {reason}"
+                elif self.resolver.resolve_path(alt_parts) is not None:
+                    normalized = alt_parts
+                    confidence = max(0.50, confidence - 0.15)
                     reason = f"[alt] {reason}"
                 else:
                     return None
@@ -1028,6 +1035,7 @@ def main():
                         conf = 0.50
                         rationale = f"[fallback] category path not found: {rule.category_path}"
                         fallbacked += 1
+                        print(f"  ⚠️ fallback(rule path): {cmdt_nm!r} → {rule.category_path}")
                     else:
                         # keyword 수에 따라 confidence 약간 가중
                         conf = min(0.99, rule.base_conf + 0.02 * max(0, len(matched_keywords) - 1))
@@ -1049,11 +1057,13 @@ def main():
                             conf = 0.55
                             rationale = "[fallback] openai path not found in category tree"
                             fallbacked += 1
+                            print(f"  ⚠️ fallback(openai path): {cmdt_nm!r} → {llm_result.category_path}")
                     else:
                         cid = fallback_id
                         conf = 0.55
                         rationale = "[fallback] no rule matched"
                         fallbacked += 1
+                        print(f"  ⚠️ fallback(no rule): {cmdt_nm!r}")
 
                 # --rule-only-update: Rule 미매칭 시 기존 분류 결과 보존
                 skip_write = args.rule_only_update and not rule_matched
