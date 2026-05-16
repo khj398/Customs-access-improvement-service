@@ -46,7 +46,7 @@ class _MypageTabState extends State<MypageTab> {
                   child: const Icon(Icons.person, color: Color(0xFF3F7BE5), size: 30),
                 ),
                 const SizedBox(width: 12),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(ApiService.userName.isNotEmpty ? ApiService.userName : '사용자',
