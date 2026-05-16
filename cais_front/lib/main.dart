@@ -1,16 +1,27 @@
-import 'package:cais_front/app.dart';
 import 'package:flutter/material.dart';
-import 'package:get_storage/get_storage.dart';
+import 'package:get/get.dart';
+import 'controllers/app_controller.dart';
+import 'screens/main_screen.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await GetStorage.init();
-
-  // 의존성 주입
-  //Get.put(ApiService());
-  //Get.put(AuthController());
-  //Get.put(FeedController());
-
-  runApp(const CAISApp());
+void main() {
+  runApp(const CaisApp());
 }
 
+class CaisApp extends StatelessWidget {
+  const CaisApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    Get.put(AppController());
+    return GetMaterialApp(
+      title: '세관 경매 서비스',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        scaffoldBackgroundColor: const Color(0xFFF3F4F6),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3B82F6)),
+        useMaterial3: true,
+      ),
+      home: const MainScreen(),
+    );
+  }
+}
