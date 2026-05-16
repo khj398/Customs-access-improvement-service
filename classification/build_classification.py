@@ -801,12 +801,18 @@ class OpenAIClassifier:
 
         # ── 사용자 프롬프트 ────────────────────────────────────────────────
         token_upper = {t.upper() for t in raw_tokens}
+        # 한국어 토큰 추출 (카테고리명과 관련도 스코어링에 사용)
+        korean_tokens = set(re.findall(r"[가-힣]{2,}", cmdt_nm or ""))
+
         def path_relevance(p: List[str]) -> int:
-            joined = " ".join(p).upper()
-            return sum(1 for t in token_upper if t in joined)
+            joined_en = " ".join(p).upper()
+            joined_ko = " ".join(p)
+            en_score = sum(1 for t in token_upper if t in joined_en)
+            ko_score = sum(2 for t in korean_tokens if t in joined_ko)  # 한국어 가중치 2배
+            return en_score + ko_score
 
         scored = sorted(allowed_paths, key=lambda p: path_relevance(p.split(" > ")), reverse=True)
-        candidate_paths = scored[:20] if len(scored) > 20 else scored
+        candidate_paths = scored  # 전체 경로 전달 (20개 제한 제거)
 
         depth_schema = (
             ["대분류"] if self.target_level == 1
@@ -909,8 +915,8 @@ def main():
     parser.add_argument("--use-openai", action="store_true", help="Enable OpenAI fallback classifier")
     parser.add_argument("--openai-model", type=str, default="gpt-4o-mini", help="OpenAI model name")
     parser.add_argument(
-        "--openai-target-level", type=int, default=2, choices=[1, 2, 3],
-        help="OpenAI 분류 깊이: 1=대분류, 2=중분류(기본), 3=소분류",
+        "--openai-target-level", type=int, default=3, choices=[1, 2, 3],
+        help="OpenAI 분류 깊이: 1=대분류, 2=중분류, 3=소분류(기본)",
     )
     parser.add_argument(
         "--strict-openai",
