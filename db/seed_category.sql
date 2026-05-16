@@ -231,7 +231,8 @@ LIMIT 1;
 -- L3: 룰에서 쓰는 소분류(없으면 추가)
 INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@HOME_KITCHEN, 3, '커피·음료기기', 'Coffee & Beverage Machines'),
-(@HOME_LIVING,  3, '공기·냉난방', 'Air & HVAC');
+(@HOME_LIVING,  3, '공기·냉난방', 'Air & HVAC'),
+(@HOME_LIVING,  3, '이미용가전', 'Beauty & Grooming Appliances');
 
 
 

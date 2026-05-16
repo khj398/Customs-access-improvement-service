@@ -114,13 +114,41 @@ SELECT category_id INTO @L1_BEAUTY FROM category WHERE parent_id IS NULL AND nam
 
 INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@L1_BEAUTY, 2, '화장품', 'Cosmetics'),
-(@L1_BEAUTY, 2, '헤어·바디', 'Hair & Body');
+(@L1_BEAUTY, 2, '헤어·바디', 'Hair & Body'),
+(@L1_BEAUTY, 2, '구강·위생', 'Oral & Hygiene');
 
 SELECT category_id INTO @BEAUTY_COSM FROM category WHERE parent_id=@L1_BEAUTY AND name_ko='화장품' LIMIT 1;
 SELECT category_id INTO @BEAUTY_HAIR FROM category WHERE parent_id=@L1_BEAUTY AND name_ko='헤어·바디' LIMIT 1;
+SELECT category_id INTO @BEAUTY_ORAL FROM category WHERE parent_id=@L1_BEAUTY AND name_ko='구강·위생' LIMIT 1;
 
 INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
 (@BEAUTY_COSM, 3, '스킨케어', 'Skincare'),
 (@BEAUTY_COSM, 3, '색조화장', 'Makeup'),
-(@BEAUTY_HAIR, 3, '헤어케어', 'Hair Care');
+(@BEAUTY_COSM, 3, '향수', 'Perfume'),
+(@BEAUTY_HAIR, 3, '헤어케어', 'Hair Care'),
+(@BEAUTY_ORAL, 3, '구강용품', 'Oral Care'),
+(@BEAUTY_ORAL, 3, '의약외품', 'Quasi-drug');
+
+-- ─────────────────────────────────────
+-- 의류·패션잡화 하위 카테고리
+-- ─────────────────────────────────────
+SELECT category_id INTO @L1_FASHION FROM category WHERE parent_id IS NULL AND name_ko='의류·패션잡화' LIMIT 1;
+
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
+(@L1_FASHION, 2, '주얼리·액세서리', 'Jewelry & Accessories'),
+(@L1_FASHION, 2, '가방·지갑', 'Bags & Wallets'),
+(@L1_FASHION, 2, '의류', 'Clothing'),
+(@L1_FASHION, 2, '선글라스·안경', 'Sunglasses & Eyewear');
+
+SELECT category_id INTO @FASHION_JEWEL  FROM category WHERE parent_id=@L1_FASHION AND name_ko='주얼리·액세서리' LIMIT 1;
+SELECT category_id INTO @FASHION_BAG    FROM category WHERE parent_id=@L1_FASHION AND name_ko='가방·지갑' LIMIT 1;
+SELECT category_id INTO @FASHION_CLOTH  FROM category WHERE parent_id=@L1_FASHION AND name_ko='의류' LIMIT 1;
+SELECT category_id INTO @FASHION_GLASS  FROM category WHERE parent_id=@L1_FASHION AND name_ko='선글라스·안경' LIMIT 1;
+
+INSERT IGNORE INTO category (parent_id, level, name_ko, name_en) VALUES
+(@FASHION_JEWEL, 3, '목걸이·귀걸이·반지', 'Necklace & Earrings & Rings'),
+(@FASHION_BAG,   3, '가방', 'Bags'),
+(@FASHION_BAG,   3, '지갑', 'Wallets'),
+(@FASHION_CLOTH, 3, '상의·하의', 'Tops & Bottoms'),
+(@FASHION_GLASS, 3, '선글라스', 'Sunglasses');
 

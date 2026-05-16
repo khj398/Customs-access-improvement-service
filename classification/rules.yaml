@@ -6,8 +6,9 @@
 # ---------
 # - id           : Rule 고유 식별자 (영문_소문자)
 # - priority     : 낮을수록 먼저 적용 (우선순위 높음)
-# - keywords_all : 토큰이 모두 포함돼야 매칭 (AND 조건)
-# - keywords_any : 토큰 중 하나라도 포함되면 매칭 (OR 조건)
+# - keywords_all : 토큰이 모두 포함돼야 매칭 (AND 조건, 영문)
+# - keywords_any : 토큰 중 하나라도 포함되면 매칭 (OR 조건, 영문)
+# - keywords_ko  : 한국어 키워드 — 물품명에 포함되면 우선 매칭 (OR 조건)
 # - category_path: 카테고리 경로 (대분류 / 중분류 / 소분류)
 # - confidence   : 기본 신뢰도 (0~1)
 # - rationale    : 분류 근거 설명
@@ -36,7 +37,7 @@ rules:
     priority: 3
     keywords_any: [WOVEN, FABRIC, FABRICS, TEXTILE, YARN, KNIT, KNITTED, LINEN, COTTON, DENIM]
     keywords_all: []
-    category_path: [의류·패션잡화]
+    category_path: [의류·패션잡화, 의류, 상의·하의]
     confidence: 0.85
     rationale: "직물·원단 키워드 — 평가셋 추가 (WOVEN FABRICS OF COTTON)"
 
@@ -44,9 +45,41 @@ rules:
     priority: 4
     keywords_any: [SHIRT, TSHIRT, PANTS, JACKET, VEST, DRESS, SKIRT, COAT, SNEAKER, SHOE, SHOES, BOOTS, FLAT, LOAFER, RESHGUARD]
     keywords_all: []
-    category_path: [의류·패션잡화]
+    category_path: [의류·패션잡화, 의류, 상의·하의]
     confidence: 0.88
     rationale: "의류·신발 키워드 — 평가셋 추가 (T SHIRT, FLAT SHOE, SNEAKER 등)"
+
+  - id: fashion_jewelry
+    priority: 4
+    keywords_any: [JEWELRY, JEWELLERY, NECKLACE, BRACELET, EARRING, EARRINGS, RING, RINGS, PENDANT, BANGLE, BROOCH]
+    keywords_all: []
+    category_path: [의류·패션잡화, 주얼리·액세서리, 목걸이·귀걸이·반지]
+    confidence: 0.88
+    rationale: "주얼리·액세서리 키워드 (NECKLACE/BRACELET/EARRINGS/RING 등)"
+
+  - id: fashion_bag
+    priority: 4
+    keywords_any: [BAG, BAGS, BACKPACK, HANDBAG, PURSE, SLING, TOTE, CLUTCH, CANVAS]
+    keywords_all: []
+    category_path: [의류·패션잡화, 가방·지갑, 가방]
+    confidence: 0.85
+    rationale: "가방 키워드 (BAG/BACKPACK/SLING/CANVAS 등)"
+
+  - id: fashion_wallet
+    priority: 4
+    keywords_any: [WALLET, WALLETS, CARDHOLDER, CARDCASE]
+    keywords_all: []
+    category_path: [의류·패션잡화, 가방·지갑, 지갑]
+    confidence: 0.88
+    rationale: "지갑 키워드"
+
+  - id: fashion_sunglasses
+    priority: 4
+    keywords_any: [SUNGLASSES, SUNGLASS, EYEWEAR, GOGGLE, GOGGLES]
+    keywords_all: []
+    category_path: [의류·패션잡화, 선글라스·안경, 선글라스]
+    confidence: 0.88
+    rationale: "선글라스·안경 키워드"
 
   # =======================================================
   # 식품·음료
@@ -122,7 +155,7 @@ rules:
 
   - id: chem_industrial_material
     priority: 26
-    keywords_any: [UREA, CHAMOTTE, PA6, POLYAMIDE, POLYMER, RESIN, SILICONE, VARNISH, LACQUER, PIGMENT]
+    keywords_any: [UREA, CHAMOTTE, PA6, POLYAMIDE, POLYMER, RESIN, SILICONE, VARNISH, LACQUER, PIGMENT, PELLET, PELLETS]
     keywords_all: []
     category_path: [부품·소모품, 화학·오일·윤활, 화학물질]
     confidence: 0.80
@@ -215,6 +248,14 @@ rules:
   # =======================================================
   # 전자·전기
   # =======================================================
+
+  - id: electronic_led_light
+    priority: 49
+    keywords_any: [LED, LAMP, LAMPS, LIGHTING, SPOTLIGHT, FLOODLIGHT, BULB]
+    keywords_all: []
+    category_path: [전자·전기, 전자부품, PCB·모듈]
+    confidence: 0.75
+    rationale: "LED·조명 키워드 — KODILAN GS-LED 오분류 수정"
 
   - id: electronic_cable_connector
     priority: 50
@@ -363,6 +404,14 @@ rules:
   # =======================================================
   # 뷰티·위생
   # =======================================================
+
+  - id: beauty_perfume
+    priority: 74
+    keywords_any: [PERFUME, EDP, EDT, COLOGNE, FRAGRANCE, PARFUM]
+    keywords_all: []
+    category_path: [뷰티·위생, 화장품, 향수]
+    confidence: 0.88
+    rationale: "향수 키워드 (PERFUME/EDP/EDT/PARFUM 등)"
 
   - id: beauty_makeup
     priority: 75
@@ -543,3 +592,196 @@ rules:
     category_path: [생활·주방, 가구·인테리어, 가구]
     confidence: 0.85
     rationale: "가구 키워드 (CHAIR/SOFA 등) — CHAIR·SOFA 미분류 수정"
+
+  # =======================================================
+  # 한국어 키워드 룰 (keywords_ko)
+  # =======================================================
+
+  - id: ko_beauty_candle
+    priority: 51
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [캔들, 향초, 아로마캔들]
+    category_path: [생활·주방, 주방·식탁, 주방용품]
+    confidence: 0.82
+    rationale: "한국어 — 캔들/향초 → 주방용품"
+
+  - id: ko_beauty_oral
+    priority: 52
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [치약, 칫솔, 구강청결제, 치실, 구강세정]
+    category_path: [뷰티·위생, 구강·위생, 구강용품]
+    confidence: 0.87
+    rationale: "한국어 — 치약/칫솔 → 구강용품"
+
+  - id: ko_beauty_eyedrops
+    priority: 53
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [안약, 점안액, 인공눈물]
+    category_path: [뷰티·위생, 구강·위생, 의약외품]
+    confidence: 0.82
+    rationale: "한국어 — 안약/점안액 → 의약외품"
+
+  - id: ko_beauty_brush_makeup
+    priority: 54
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [브러쉬, 파우더, 아이섀도, 립스틱, 립글로스, 마스카라, 파운데이션, 쿠션, 비비크림, 틴트]
+    category_path: [뷰티·위생, 화장품, 색조화장]
+    confidence: 0.86
+    rationale: "한국어 — 색조화장 제품명"
+
+  - id: ko_beauty_skincare
+    priority: 55
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [핸드크림, 로션, 세럼, 에센스, 수분크림, 선크림, 자외선차단, 토너, 스킨로션, 앰플, 아이크림, 비타민씨]
+    category_path: [뷰티·위생, 화장품, 스킨케어]
+    confidence: 0.86
+    rationale: "한국어 — 스킨케어 제품명"
+
+  - id: ko_beauty_hair
+    priority: 56
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [샴푸, 린스, 컨디셔너, 헤어오일, 헤어에센스, 헤어팩, 헤어마스크]
+    category_path: [뷰티·위생, 헤어·바디, 헤어케어]
+    confidence: 0.85
+    rationale: "한국어 — 헤어케어 제품명"
+
+  - id: ko_beauty_mask
+    priority: 57
+    keywords_any: [MASK]
+    keywords_all: []
+    keywords_ko: [마스크팩, 시트마스크, 마스크]
+    category_path: [뷰티·위생, 화장품, 스킨케어]
+    confidence: 0.82
+    rationale: "한국어 — 마스크팩 → 스킨케어"
+
+  - id: ko_appliance_hair_tool
+    priority: 58
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [고데기, 헤어드라이어, 드라이어, 헤어스타일러, 고데]
+    category_path: [가전, 생활가전, 이미용가전]
+    confidence: 0.87
+    rationale: "한국어 — 고데기/드라이어 → 이미용가전"
+
+  - id: ko_appliance_massage
+    priority: 59
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [마사지기, 안마기, 마사지건, 두피마사지, 발마사지]
+    category_path: [가전, 생활가전, 이미용가전]
+    confidence: 0.84
+    rationale: "한국어 — 마사지기 → 이미용가전"
+
+  - id: ko_appliance_shaver
+    priority: 60
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [면도기, 전기면도기, 쉐이버]
+    category_path: [가전, 생활가전, 이미용가전]
+    confidence: 0.85
+    rationale: "한국어 — 면도기 → 이미용가전"
+
+  - id: ko_toy_stuffed
+    priority: 61
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [봉제인형, 인형, 플러시, 피규어, 완구, 장난감, 레고, 블록]
+    category_path: [스포츠·레저, 취미·악기, 완구]
+    confidence: 0.85
+    rationale: "한국어 — 봉제인형/피규어/완구"
+
+  - id: ko_toy_keyring
+    priority: 62
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [키링, 열쇠고리, 키홀더]
+    category_path: [스포츠·레저, 취미·악기, 완구]
+    confidence: 0.80
+    rationale: "한국어 — 키링/열쇠고리 → 완구"
+
+  - id: ko_toy_trading_card
+    priority: 63
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [포켓몬카드, 트레이딩카드, 유희왕카드, 카드게임]
+    category_path: [스포츠·레저, 취미·악기, 완구]
+    confidence: 0.87
+    rationale: "한국어 — 트레이딩카드 → 완구"
+
+  - id: ko_fashion_clothing
+    priority: 64
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [티셔츠, 반팔, 셔츠, 청바지, 바지, 후드, 후드티, 맨투맨, 자켓, 재킷, 코트, 점퍼, 가디건, 니트, 스웨터, 블라우스, 원피스, 치마]
+    category_path: [의류·패션잡화, 의류, 상의·하의]
+    confidence: 0.87
+    rationale: "한국어 — 의류 제품명"
+
+  - id: ko_fashion_shoes
+    priority: 65
+    keywords_any: [SHOE, SHOES, SNEAKER, BOOT, SANDAL]
+    keywords_all: []
+    keywords_ko: [신발, 운동화, 스니커즈, 구두, 슬리퍼, 샌들, 부츠]
+    category_path: [의류·패션잡화, 의류, 상의·하의]
+    confidence: 0.82
+    rationale: "한국어 — 신발류 (별도 신발 카테고리 없으므로 의류로)"
+
+  - id: ko_fashion_scarf
+    priority: 66
+    keywords_any: [SCARF]
+    keywords_all: []
+    keywords_ko: [스카프, 머플러, 숄]
+    category_path: [의류·패션잡화, 의류, 상의·하의]
+    confidence: 0.80
+    rationale: "한국어 — 스카프/머플러 → 의류"
+
+  - id: ko_electronics_headphone
+    priority: 67
+    keywords_any: [HEADPHONE, EARPHONE, HEADSET, EARBUDS]
+    keywords_all: []
+    keywords_ko: [헤드폰, 이어폰, 이어버드, 헤드셋, 무선이어폰]
+    category_path: [컴퓨터·모바일, 모바일, 액세서리]
+    confidence: 0.86
+    rationale: "한국어/영문 — 헤드폰/이어폰 → 모바일 액세서리"
+
+  - id: ko_hobby_vinyl
+    priority: 68
+    keywords_any: [VINYL, LP]
+    keywords_all: []
+    keywords_ko: [바이닐, 레코드판, 레코드]
+    category_path: [스포츠·레저, 취미·악기, 악기]
+    confidence: 0.80
+    rationale: "한국어/영문 — LP/VINYL/레코드판 → 악기(취미·악기)"
+
+  - id: ko_food_wine_korean
+    priority: 69
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [퀴베, 비냐, 보카, 와인, 포도주, 레드와인, 화이트와인]
+    category_path: [식품·음료, 음료, 주류]
+    confidence: 0.85
+    rationale: "한국어 — 와인 브랜드/제품명 (퀴베, 비냐 다 보카 등)"
+
+  - id: ko_beauty_perfume_ko
+    priority: 70
+    keywords_any: []
+    keywords_all: []
+    keywords_ko: [향수, 퍼퓸, 코롱]
+    category_path: [뷰티·위생, 화장품, 향수]
+    confidence: 0.88
+    rationale: "한국어 — 향수"
+
+  - id: ko_nail_care
+    priority: 71
+    keywords_any: [NAIL]
+    keywords_all: []
+    keywords_ko: [네일, 네일아트, 젤네일, 네일폴리시, 매니큐어]
+    category_path: [뷰티·위생, 화장품, 색조화장]
+    confidence: 0.85
+    rationale: "한국어/영문 — 네일/NAIL → 색조화장"
