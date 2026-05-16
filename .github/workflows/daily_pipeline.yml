@@ -1,50 +1,20 @@
 name: Daily Pipeline (수동 트리거)
 
 # 매일 02:00 KST (UTC 17:00 전날) 자동 실행 + 수동 트리거 지원
-# 수집(Playwright) → ETL → 분류 전 단계를 CI에서 실행.
+# 역할: 경매 데이터 수집(Playwright) → JSON 파일 git 커밋
+# ETL / 분류 / 이미지 수집은 로컬에서 실행
 on:
   schedule:
     - cron: "0 17 * * *"   # 매일 02:00 KST
   workflow_dispatch:
-    inputs:
-      use_openai:
-        description: "OpenAI fallback 활성화 (true/false)"
-        required: false
-        default: "false"
-      mode:
-        description: "실행 모드 (full / classify-only / etl-only)"
-        required: false
-        default: "full"
 
 permissions:
   contents: write
 
 jobs:
-  classify:
-    name: 분류 파이프라인
+  collect:
+    name: 경매 데이터 수집
     runs-on: ubuntu-latest
-
-    env:
-      DB_HOST: 127.0.0.1
-      DB_USER: root
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      DB_NAME: customs_auction
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      LAMBDA_IMAGE_URL: ${{ secrets.LAMBDA_IMAGE_URL }}
-
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          MYSQL_DATABASE: customs_auction
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
 
     steps:
       - uses: actions/checkout@v4
@@ -58,7 +28,7 @@ jobs:
           cache: pip
 
       - name: 의존성 설치
-        run: pip install pymysql pyyaml openai mysql-connector-python playwright cryptography requests
+        run: pip install playwright
 
       - name: Playwright 브라우저 설치
         run: playwright install chromium --with-deps
@@ -73,17 +43,6 @@ jobs:
           retention-days: 90
           if-no-files-found: ignore
 
-      - name: DB 스키마 초기화
-        run: |
-          MYSQL_PWD="${{ secrets.DB_PASSWORD }}" mysql -h 127.0.0.1 -u root customs_auction \
-            < db/schema_create.sql
-          MYSQL_PWD="${{ secrets.DB_PASSWORD }}" mysql -h 127.0.0.1 -u root customs_auction \
-            < db/schema_patch_v2.sql
-          MYSQL_PWD="${{ secrets.DB_PASSWORD }}" mysql -h 127.0.0.1 -u root customs_auction \
-            < db/seed_category.sql
-          MYSQL_PWD="${{ secrets.DB_PASSWORD }}" mysql -h 127.0.0.1 -u root customs_auction \
-            < db/seed_synonym.sql || true
-
       - name: 경매 데이터 수집 (2b - 사업자)
         run: python project/AWSLambda/UNIPASS_LIST_Business.py
 
@@ -97,25 +56,3 @@ jobs:
           git add unipass_all_2b.json unipass_all_2c.json
           git diff --staged --quiet || git commit -m "chore: 일일 경매 데이터 수집 [skip ci]"
           git push
-
-      - name: 파이프라인 실행
-        run: |
-          MODE="${{ github.event.inputs.mode || 'full' }}"
-          USE_OPENAI="${{ github.event.inputs.use_openai || 'false' }}"
-          CMD="python pipeline/run_pipeline.py --mode $MODE"
-          if [ "$USE_OPENAI" = "true" ]; then
-            CMD="$CMD --use-openai"
-          fi
-          echo "실행 명령: $CMD"
-          $CMD
-
-      - name: 이미지 수집 Lambda 트리거 + S3 URL 저장
-        run: python pipeline/trigger_image_lambda.py
-
-      - name: 정확도 평가 리포트 업로드
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: accuracy-report-${{ github.run_number }}
-          path: classification/eval/accuracy_report.txt
-          retention-days: 30
