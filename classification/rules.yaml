@@ -122,11 +122,23 @@ rules:
 
   - id: chem_industrial_material
     priority: 26
-    keywords_any: [UREA, CHAMOTTE, PA6, POLYAMIDE, POLYMER, RESIN, SILICONE]
+    keywords_any: [UREA, CHAMOTTE, PA6, POLYAMIDE, POLYMER, RESIN, SILICONE, VARNISH, LACQUER, PIGMENT]
     keywords_all: []
     category_path: [부품·소모품, 화학·오일·윤활, 화학물질]
     confidence: 0.80
-    rationale: "산업용 화학·고분자 소재 키워드 (UREA/PA6/CHAMOTTE 등) — CSV 오분류 수정"
+    rationale: "산업용 화학·고분자·도료 소재 키워드 (UREA/PA6/CHAMOTTE/VARNISH 등)"
+
+  # =======================================================
+  # 산업·장비 — 안전·보호
+  # =======================================================
+
+  - id: safety_respirator
+    priority: 29
+    keywords_any: [RESPIRATOR, VENTILATOR, HELMET, HARDHAT, GOGGLES]
+    keywords_all: []
+    category_path: [산업·장비, 안전·보호, 보호구]
+    confidence: 0.82
+    rationale: "호흡기·환기장치·보호구 키워드 — VENTILATOR RESPIRATOR 오분류 수정"
 
   # =======================================================
   # 산업·장비 — 계측·시험
@@ -455,6 +467,14 @@ rules:
   # =======================================================
   # 가전
   # =======================================================
+
+  - id: appliance_personal_care
+    priority: 88
+    keywords_any: [SHAVER, RAZOR, TRIMMER, CLIPPER, EPILATOR, MASSAGER, HAIRDRYER, BLOWDRYER, IRON, CURLER]
+    keywords_all: []
+    category_path: [가전, 생활가전]
+    confidence: 0.82
+    rationale: "개인 미용·케어 가전 키워드 (면도기/마사지기/드라이어 등)"
 
   - id: appliance_tv
     priority: 89
