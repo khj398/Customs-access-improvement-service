@@ -175,3 +175,29 @@ exports.findByPbacNo = async (pbacNo) => {
   `, [pbacNo]);
   return rows;
 };
+
+// 카테고리별 물품 건수 (L3→L2→L1 롤업)
+exports.getCategoryStats = async () => {
+  const [rows] = await pool.query(`
+    SELECT ic.category_id AS categoryId, COUNT(*) AS cnt
+    FROM item_classification ic
+    GROUP BY ic.category_id
+  `);
+
+  const direct = {};
+  for (const r of rows) direct[r.categoryId] = Number(r.cnt);
+
+  const [cats] = await pool.query(`SELECT category_id, parent_id FROM category`);
+  const parentOf = {};
+  for (const c of cats) parentOf[c.category_id] = c.parent_id;
+
+  const totals = { ...direct };
+  for (const [id, cnt] of Object.entries(direct)) {
+    let cur = parentOf[Number(id)];
+    while (cur != null) {
+      totals[cur] = (totals[cur] || 0) + cnt;
+      cur = parentOf[cur];
+    }
+  }
+  return totals;
+};
