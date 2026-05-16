@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import 'controllers/app_controller.dart';
+import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
+import 'services/api_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await GetStorage.init();
   runApp(const CaisApp());
 }
 
@@ -21,7 +26,7 @@ class CaisApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3B82F6)),
         useMaterial3: true,
       ),
-      home: const MainScreen(),
+      home: ApiService.isLoggedIn ? const MainScreen() : const LoginScreen(),
     );
   }
 }

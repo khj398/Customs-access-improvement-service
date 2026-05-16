@@ -3,8 +3,10 @@ import 'package:get/get.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../controllers/app_controller.dart';
 import '../models/item.dart';
+import '../services/api_service.dart';
 import '../utils/format.dart';
 import 'detail_screen.dart';
+import 'login_screen.dart';
 
 const _kPrimary = Color(0xFF3B82F6);
 const _kPrimaryDark = Color(0xFF171A3B);
@@ -47,9 +49,21 @@ class _MypageTabState extends State<MypageTab> {
                 const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('test', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                    Text('test@test.com', style: TextStyle(color: Color(0xFF8B8D95), fontSize: 14)),
+                    Text(ApiService.userName.isNotEmpty ? ApiService.userName : '사용자',
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                    Text(ApiService.userEmail,
+                        style: const TextStyle(color: Color(0xFF8B8D95), fontSize: 14)),
                   ],
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () {
+                    ApiService.logout();
+                    Get.offAll(() => const LoginScreen(), transition: Transition.fadeIn);
+                  },
+                  icon: const Icon(Icons.logout, size: 16, color: Color(0xFF9CA3AF)),
+                  label: const Text('로그아웃',
+                      style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13)),
                 ),
               ],
             ),

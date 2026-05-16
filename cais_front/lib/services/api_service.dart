@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import '../models/item.dart';
 import 'api_config.dart';
@@ -14,6 +15,58 @@ class ApiException implements Exception {
 class ApiService {
   final String _base = ApiConfig.baseUrl;
   final Duration _timeout = Duration(seconds: ApiConfig.timeoutSeconds);
+  static final _box = GetStorage();
+
+  static const _kToken    = 'jwt_token';
+  static const _kUserId   = 'userId';
+  static const _kUserName = 'userName';
+  static const _kEmail    = 'userEmail';
+
+  static String? get token     => _box.read<String>(_kToken);
+  static bool    get isLoggedIn => token != null && token!.isNotEmpty;
+  static String  get userName  => _box.read<String>(_kUserName) ?? '';
+  static String  get userEmail => _box.read<String>(_kEmail) ?? '';
+
+  Map<String, String> _authHeaders() => {
+    'Content-Type': 'application/json',
+    if (token != null) 'Authorization': 'Bearer $token',
+  };
+
+  void _saveAuth(Map<String, dynamic> data) {
+    _box.write(_kToken,    data['token']);
+    _box.write(_kUserId,   data['userId']);
+    _box.write(_kUserName, data['userName']);
+    _box.write(_kEmail,    data['userEmail']);
+  }
+
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    final res = await http.post(
+      Uri.parse('$_base/api/auth/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userEmail': email, 'userPassword': password}),
+    ).timeout(_timeout);
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode == 200) { _saveAuth(data); return data; }
+    throw ApiException(data['error'] ?? '로그인에 실패했습니다', statusCode: res.statusCode);
+  }
+
+  Future<Map<String, dynamic>> register(String email, String password, String name) async {
+    final res = await http.post(
+      Uri.parse('$_base/api/auth/register'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userEmail': email, 'userPassword': password, 'userName': name}),
+    ).timeout(_timeout);
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode == 201) { _saveAuth(data); return data; }
+    throw ApiException(data['error'] ?? '회원가입에 실패했습니다', statusCode: res.statusCode);
+  }
+
+  static void logout() {
+    _box.remove(_kToken);
+    _box.remove(_kUserId);
+    _box.remove(_kUserName);
+    _box.remove(_kEmail);
+  }
 
   Future<List<AuctionItem>> fetchItems({
     String? keyword,
