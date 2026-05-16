@@ -14,6 +14,17 @@ class ItemCard extends StatelessWidget {
 
   const ItemCard({super.key, required this.item, this.small = false});
 
+  Widget _buildPlaceholder() => Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFE8E9EC), Color(0xFFDDE0E7)],
+          ),
+        ),
+        child: const Icon(Icons.inventory_2_outlined, size: 40, color: Color(0xFFA6ABB4)),
+      );
+
   @override
   Widget build(BuildContext context) {
     final ctrl = Get.find<AppController>();
@@ -36,16 +47,17 @@ class ItemCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFFE8E9EC), Color(0xFFDDE0E7)],
-                      ),
-                    ),
-                    child: const Icon(Icons.inventory_2_outlined, size: 40, color: Color(0xFFA6ABB4)),
-                  ),
+                  item.images.isNotEmpty
+                      ? Image.network(
+                          item.images.first,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                          loadingBuilder: (_, child, progress) =>
+                              progress == null ? child : _buildPlaceholder(),
+                        )
+                      : _buildPlaceholder(),
                   Positioned(
                     top: 8, right: 8,
                     child: Obx(() {

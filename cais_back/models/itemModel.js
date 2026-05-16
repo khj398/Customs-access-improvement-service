@@ -74,7 +74,12 @@ exports.search = async ({ keyword, categoryId, cstmSgn, page = 1, limit = 20, us
       a.pbac_strt_dttm AS pbacStrtDttm, a.pbac_end_dttm AS pbacEndDttm,
       a.cstm_sgn AS cstmSgn, co.cstm_name AS cstmName,
       ic.category_id AS categoryId, c.name_ko AS categoryName,
-      ${isFavoriteCol}
+      ${isFavoriteCol},
+      (
+        SELECT GROUP_CONCAT(aii.image_url ORDER BY aii.image_seq SEPARATOR '|')
+        FROM auction_item_image aii
+        WHERE aii.pbac_no = ai.pbac_no AND aii.pbac_srno = ai.pbac_srno AND aii.cmdt_ln_no = ai.cmdt_ln_no
+      ) AS imageUrls
     FROM auction_item ai
     JOIN auction a ON ai.pbac_no = a.pbac_no
     LEFT JOIN customs_office co ON a.cstm_sgn = co.cstm_sgn
@@ -101,7 +106,12 @@ exports.findOne = async (pbacNo, pbacSrno, cmdtLnNo) => {
       a.bid_rstc_yn AS bidRstcYn, a.elct_bid_eon AS elctBidEon,
       a.cstm_sgn AS cstmSgn, co.cstm_name AS cstmName,
       a.snar_sgn AS snarSgn, bw.snar_name AS snarName,
-      ic.category_id AS categoryId, c.name_ko AS categoryName
+      ic.category_id AS categoryId, c.name_ko AS categoryName,
+      (
+        SELECT GROUP_CONCAT(aii.image_url ORDER BY aii.image_seq SEPARATOR '|')
+        FROM auction_item_image aii
+        WHERE aii.pbac_no = ai.pbac_no AND aii.pbac_srno = ai.pbac_srno AND aii.cmdt_ln_no = ai.cmdt_ln_no
+      ) AS imageUrls
     FROM auction_item ai
     JOIN auction a ON ai.pbac_no = a.pbac_no
     LEFT JOIN customs_office co ON a.cstm_sgn = co.cstm_sgn
@@ -140,7 +150,12 @@ exports.findByMonth = async (year, month, userId = null) => {
       co.cstm_name     AS cstmName,
       ic.category_id   AS categoryId,
       c.name_ko        AS categoryName,
-      ${isFavoriteCol}
+      ${isFavoriteCol},
+      (
+        SELECT GROUP_CONCAT(aii.image_url ORDER BY aii.image_seq SEPARATOR '|')
+        FROM auction_item_image aii
+        WHERE aii.pbac_no = ai.pbac_no AND aii.pbac_srno = ai.pbac_srno AND aii.cmdt_ln_no = ai.cmdt_ln_no
+      ) AS imageUrls
     FROM auction_item ai
     JOIN auction a ON ai.pbac_no = a.pbac_no
     LEFT JOIN customs_office co ON a.cstm_sgn = co.cstm_sgn
@@ -164,7 +179,12 @@ exports.findByPbacNo = async (pbacNo) => {
       ai.cmdt_wght AS cmdtWght, ai.cmdt_wght_ut_cd AS cmdtWghtUtCd,
       ai.pbac_prng_prc AS pbacPrngPrc,
       ai.atnt_cmdt AS atntCmdt, ai.atnt_cmdt_nm AS atntCmdtNm, ai.pbac_cond_cn AS pbacCondCn,
-      ic.category_id AS categoryId, c.name_ko AS categoryName
+      ic.category_id AS categoryId, c.name_ko AS categoryName,
+      (
+        SELECT GROUP_CONCAT(aii.image_url ORDER BY aii.image_seq SEPARATOR '|')
+        FROM auction_item_image aii
+        WHERE aii.pbac_no = ai.pbac_no AND aii.pbac_srno = ai.pbac_srno AND aii.cmdt_ln_no = ai.cmdt_ln_no
+      ) AS imageUrls
     FROM auction_item ai
     LEFT JOIN item_classification ic
       ON ic.pbac_no = ai.pbac_no AND ic.pbac_srno = ai.pbac_srno AND ic.cmdt_ln_no = ai.cmdt_ln_no

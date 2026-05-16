@@ -195,7 +195,9 @@ class _SearchTabState extends State<SearchTab> {
                   ),
                 );
               }
-              return NotificationListener<ScrollNotification>(
+              return RefreshIndicator(
+                onRefresh: ctrl.loadItems,
+                child: NotificationListener<ScrollNotification>(
                 onNotification: _onScrollNotification,
                 child: GridView.builder(
                   padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
@@ -218,6 +220,7 @@ class _SearchTabState extends State<SearchTab> {
                     return ItemCard(item: items[i]);
                   },
                 ),
+              ),
               );
             }),
           ),
