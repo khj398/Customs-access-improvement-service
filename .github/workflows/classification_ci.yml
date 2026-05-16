@@ -44,8 +44,8 @@ jobs:
                   errors.append(f"[{r.get('id')}] priority 없음")
               if not r.get("category_path"):
                   errors.append(f"[{r.get('id')}] category_path 없음")
-              if not r.get("keywords_any") and not r.get("keywords_all"):
-                  errors.append(f"[{r.get('id')}] keywords_any, keywords_all 모두 비어 있음")
+              if not r.get("keywords_any") and not r.get("keywords_all") and not r.get("keywords_ko"):
+                  errors.append(f"[{r.get('id')}] keywords_any, keywords_all, keywords_ko 모두 비어 있음")
 
           if errors:
               print("❌ rules.yaml 유효성 오류:")

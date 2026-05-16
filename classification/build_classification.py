@@ -4,7 +4,7 @@ import json
 import os
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
 
@@ -24,7 +24,7 @@ DB_CONFIG = {
     "host": os.getenv("DB_HOST", "127.0.0.1"),
     "port": int(os.getenv("DB_PORT", "3306")),
     "user": os.getenv("DB_USER", "root"),
-    "password": os.getenv("DB_PASSWORD", "Staver12^^"),      # <- 수정
+    "password": os.getenv("DB_PASSWORD", "1234"),      # <- 수정
     "database": os.getenv("DB_NAME", "customs_auction"),
     "charset": "utf8mb4",
     "cursorclass": pymysql.cursors.DictCursor,
@@ -187,11 +187,12 @@ class CategoryResolver:
 @dataclass
 class Rule:
     name: str
-    keywords_any: Set[str]             # 하나라도 포함되면 매칭
-    keywords_all: Set[str]             # 전부 포함돼야 매칭
+    keywords_any: Set[str]             # 하나라도 포함되면 매칭 (영문 토큰)
+    keywords_all: Set[str]             # 전부 포함돼야 매칭 (영문 토큰)
     category_path: List[str]           # category 경로
     base_conf: float                   # 기본 신뢰도
     rationale_hint: str                # 근거 텍스트
+    keywords_ko: Set[str] = field(default_factory=set)  # 한국어 키워드 (하나라도 포함되면 매칭)
 
 
 def build_rules(rules_path: Optional[str] = None) -> List[Rule]:
@@ -220,6 +221,7 @@ def build_rules(rules_path: Optional[str] = None) -> List[Rule]:
                     category_path=r["category_path"],
                     base_conf=float(r.get("confidence", 0.80)),
                     rationale_hint=r.get("rationale", ""),
+                    keywords_ko=set(r.get("keywords_ko") or []),
                 )
             )
         print(f"ℹ️ rules.yaml 로드: {len(rules)}개 Rule ({rules_path})")
@@ -517,9 +519,20 @@ def build_rules(rules_path: Optional[str] = None) -> List[Rule]:
     ]  # end hardcoded fallback
 
 
-def match_rule(tokens: Set[str], rules: List[Rule]) -> Optional[Tuple[Rule, Set[str]]]:
+def match_rule(
+    tokens: Set[str],
+    rules: List[Rule],
+    ko_text: str = "",
+) -> Optional[Tuple[Rule, Set[str]]]:
     """첫 매칭 룰을 반환 + 매칭된 키워드 집합."""
     for rule in rules:
+        # ── 한국어 키워드 우선 매칭 (부분문자열 검색) ────────────────────────
+        if rule.keywords_ko and ko_text:
+            ko_matched = {kw for kw in rule.keywords_ko if kw in ko_text}
+            if ko_matched:
+                return rule, ko_matched
+
+        # ── 영문 키워드 매칭 ──────────────────────────────────────────────────
         if rule.keywords_all and not rule.keywords_all.issubset(tokens):
             continue
         matched = tokens.intersection(rule.keywords_any) if rule.keywords_any else set()
@@ -528,6 +541,9 @@ def match_rule(tokens: Set[str], rules: List[Rule]) -> Optional[Tuple[Rule, Set[
         # keywords_any가 비어있고 keywords_all만 있는 케이스도 대응
         if not rule.keywords_any and rule.keywords_all:
             matched = set(rule.keywords_all)
+        # keywords_ko도 없고 keywords_any/all도 비면 스킵
+        if not matched and not rule.keywords_all:
+            continue
         return rule, matched
     return None
 
@@ -793,8 +809,9 @@ class OpenAIClassifier:
             "   - 0.70~0.84: 맥락상 합리적이나 다른 해석 가능\n"
             "   - 0.70 미만: 불확실 → alternative에 차선 경로 기재\n"
             "5. category_path는 반드시 candidate_categories 목록 중 하나여야 합니다\n"
-            "6. [중요] 어떤 카테고리에도 명확히 속하지 않는 물품(장식품·잡화·불명 물품 등)은\n"
-            "   억지로 관련 없는 카테고리에 배치하지 말고 반드시 '기타 > 미분류'를 선택하고\n"
+            "6. [중요] candidate_categories에 적합한 카테고리가 있으면 반드시 그것을 선택하세요.\n"
+            "   화장품·생활용품·패션·전자기기 등 일상 소비재는 대부분 적합한 카테고리가 있습니다.\n"
+            "   어떤 카테고리에도 명확히 속하지 않는 물품만 '기타 > 미분류'를 선택하고\n"
             "   confidence를 0.60 이하로 설정하세요.\n\n"
             "반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 절대 포함하지 마세요."
         )
@@ -1021,7 +1038,7 @@ def main():
                 raw_tokens = extract_raw_tokens(norm)
 
                 # --- classify
-                m = match_rule(raw_tokens, rules)
+                m = match_rule(raw_tokens, rules, ko_text=cmdt_nm)
                 model_name = "rule"
                 model_ver = args.model_ver
                 rule_matched = False
