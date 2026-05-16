@@ -45,14 +45,17 @@ def build_db_conn():
 
 def trigger_lambda(pbac_nos: list[str]) -> None:
     print(f"🚀 Lambda 요청 전송... (대상: {len(pbac_nos)}개)")
-    resp = requests.post(
-        LAMBDA_URL,
-        json={"targets": pbac_nos},
-        headers={"Content-Type": "application/json"},
-        timeout=30,
-    )
-    print(f"   응답: {resp.status_code} {resp.text}")
-    resp.raise_for_status()
+    try:
+        resp = requests.post(
+            LAMBDA_URL,
+            json={"targets": pbac_nos},
+            headers={"Content-Type": "application/json"},
+            timeout=30,
+        )
+        print(f"   응답: {resp.status_code} {resp.text}")
+    except requests.exceptions.ReadTimeout:
+        # Lambda가 처리 중 응답 전에 타임아웃 — AWS에서 계속 실행 중
+        print("   ⚠️  응답 타임아웃 (Lambda는 AWS에서 계속 실행 중)")
 
 
 def fetch_items(conn) -> list[dict]:
