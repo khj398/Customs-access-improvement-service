@@ -24,16 +24,20 @@ exports.searchItems = async (req, res) => {
       // Meilisearch 결과로 MySQL에서 상세 정보(찜·이미지 등) 보완
       if (!hits.length) return res.json({ items: [] });
 
-      const keys = hits.map(h => `('${h.pbacNo}','${h.pbacSrno}','${h.cmdtLnNo}')`).join(',');
       const pool = require('../config/db');
       const isFavoriteCol = userId
         ? `CASE WHEN l.watch_target_id IS NOT NULL THEN 1 ELSE 0 END AS isFavorite`
         : `0 AS isFavorite`;
       const likesJoin = userId
         ? `LEFT JOIN user_watchlist_target l
-             ON l.user_id = ${pool.escape(userId)} AND l.target_level = 'ITEM'
+             ON l.user_id = ? AND l.target_level = 'ITEM'
             AND l.pbac_no = ai.pbac_no AND l.pbac_srno = ai.pbac_srno AND l.cmdt_ln_no = ai.cmdt_ln_no`
         : '';
+
+      // Meilisearch hit 키를 중첩 배열로 전달 → mysql2가 tuple IN 형태로 파라미터화
+      // (외부 검색 인덱스 값을 직접 SQL에 보간하지 않음)
+      const keyTuples = hits.map(h => [String(h.pbacNo), String(h.pbacSrno), String(h.cmdtLnNo)]);
+      const queryParams = userId ? [userId, keyTuples] : [keyTuples];
 
       const [rows] = await pool.query(`
         SELECT
@@ -57,8 +61,8 @@ exports.searchItems = async (req, res) => {
         LEFT JOIN item_classification ic ON ic.pbac_no = ai.pbac_no AND ic.pbac_srno = ai.pbac_srno AND ic.cmdt_ln_no = ai.cmdt_ln_no
         LEFT JOIN category c ON ic.category_id = c.category_id
         ${likesJoin}
-        WHERE (ai.pbac_no, ai.pbac_srno, ai.cmdt_ln_no) IN (${keys})
-      `);
+        WHERE (ai.pbac_no, ai.pbac_srno, ai.cmdt_ln_no) IN (?)
+      `, queryParams);
 
       // Meilisearch 관련도 순서 유지
       const map = new Map(rows.map(r => [`${r.pbacNo}_${r.pbacSrno}_${r.cmdtLnNo}`, r]));

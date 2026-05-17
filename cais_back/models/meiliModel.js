@@ -29,7 +29,13 @@ exports.search = async ({ keyword, categoryId, cstmSgn, page = 1, limit = 20 }) 
 
   const catFilter = await buildCategoryFilter(categoryId);
   if (catFilter) filters.push(`(${catFilter})`);
-  if (cstmSgn)   filters.push(`cstmSgn = "${cstmSgn}"`);
+  if (cstmSgn) {
+    // Meilisearch 필터 문자열에 직접 보간되므로 허용 문자만 검증
+    if (!/^[\w\-]{1,20}$/.test(cstmSgn)) {
+      throw new Error(`유효하지 않은 cstmSgn 값입니다: ${cstmSgn}`);
+    }
+    filters.push(`cstmSgn = "${cstmSgn}"`);
+  }
 
   const result = await index().search(keyword || '', {
     offset,
