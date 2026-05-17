@@ -31,9 +31,10 @@
 1. **Crawler**: 유니패스에서 공매 데이터를 수집해 JSON 저장
 2. **DB Schema/Seed**: 스키마 생성 및 분류 기준(seed) 로딩
 3. **ETL**: JSON/이미지 메타를 MySQL에 UPSERT 적재
-4. **Classification**: 자동 분류 + 검색 토큰 생성
-5. **Backend/API**: 조회/검색/필터/알림 기능 제공
-6. **Frontend**: 사용자 탐색 UI 제공
+4. **Classification**: 자동 분류 + 검색 토큰 생성 (Rule 기반 + OpenAI fallback + 한글 키워드 룰)
+5. **Meilisearch 동기화**: MySQL 물품 데이터를 검색 인덱스로 동기화
+6. **Backend/API**: 조회/검색/필터/알림 기능 제공
+7. **Frontend**: 사용자 탐색 UI 제공 (Flutter Web/Mobile)
 
 ---
 
@@ -128,7 +129,27 @@ MySQL Workbench에서:
 
 ---
 
-### 4) Node.js 백엔드 실행
+### 4) Meilisearch 실행 및 동기화
+
+Docker가 설치되어 있어야 합니다.
+
+```bash
+# Meilisearch 컨테이너 실행
+docker run -d --name meilisearch \
+  -p 7700:7700 \
+  -e MEILI_MASTER_KEY=cais-search-key \
+  getmeili/meilisearch:latest
+
+# MySQL 물품 데이터 동기화 (cais_back 디렉터리에서 실행)
+cd cais_back
+node scripts/sync_meili.js
+```
+
+> 물품 데이터가 변경(추가/수정)될 때마다 `sync_meili.js`를 재실행해야 검색 결과가 최신으로 유지됩니다.
+
+---
+
+### 5) Node.js 백엔드 실행
 
 ```bash
 cd cais_back
@@ -143,11 +164,13 @@ DB_USER=root
 DB_PASSWORD=<비밀번호>
 DB_NAME=customs_auction
 JWT_SECRET=<임의 문자열>
+MEILI_HOST=http://localhost:7700
+MEILI_MASTER_KEY=cais-search-key
 ```
 
 ---
 
-### 5) Flutter 앱 실행
+### 6) Flutter 앱 실행
 
 ```bash
 cd cais_front
@@ -162,7 +185,7 @@ flutter run --dart-define=API_BASE_URL=http://192.168.x.x:3000
 
 ---
 
-### 6) (선택) 자동 분류 파이프라인
+### 7) (선택) 자동 분류 파이프라인
 
 ```bash
 # 매일 자동 실행 (스케줄러)
