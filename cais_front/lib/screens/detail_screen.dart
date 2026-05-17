@@ -17,29 +17,38 @@ class DetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final ctrl = Get.find<AppController>();
 
+    final screenW = MediaQuery.of(context).size.width;
+    final isWide = screenW >= 720;
+    final heroH = isWide ? 340.0 : 260.0;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
+      backgroundColor: isWide ? const Color(0xFFF4F5F8) : Colors.white,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 860),
+          child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Hero image
             SizedBox(
-              height: 300,
+              height: heroH,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  item.images.isNotEmpty
-                      ? Image.network(
-                          item.images.first,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          errorBuilder: (_, __, ___) => _detailPlaceholder(),
-                          loadingBuilder: (_, child, progress) =>
-                              progress == null ? child : _detailPlaceholder(),
-                        )
-                      : _detailPlaceholder(),
+                  Container(color: const Color(0xFFF0F1F5)),
+                  if (item.images.isNotEmpty)
+                    Image.network(
+                      item.images.first,
+                      fit: BoxFit.contain,
+                      width: double.infinity,
+                      height: double.infinity,
+                      errorBuilder: (_, __, ___) => _detailPlaceholder(),
+                      loadingBuilder: (_, child, progress) =>
+                          progress == null ? child : _detailPlaceholder(),
+                    )
+                  else
+                    _detailPlaceholder(),
                   SafeArea(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -187,6 +196,8 @@ class DetailScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
         ),
       ),
     );
