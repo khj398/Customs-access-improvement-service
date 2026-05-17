@@ -7,6 +7,17 @@ import 'detail_screen.dart';
 const _kPrimary = Color(0xFF3B82F6);
 const _kDanger = Color(0xFFEF4444);
 
+Widget _wishPlaceholder() => Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFE8E9EC), Color(0xFFDDE0E7)],
+        ),
+      ),
+      child: const Icon(Icons.inventory_2_outlined, size: 32, color: Color(0xFFA6ABB4)),
+    );
+
 class WishlistTab extends StatelessWidget {
   const WishlistTab({super.key});
 
@@ -59,17 +70,21 @@ class WishlistTab extends StatelessWidget {
                         ),
                         child: Row(
                           children: [
-                            Container(
-                              width: 90, height: 90,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(14),
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [Color(0xFFE8E9EC), Color(0xFFDDE0E7)],
-                                ),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: SizedBox(
+                                width: 90, height: 90,
+                                child: item.images.isNotEmpty
+                                    ? Image.network(
+                                        item.images.first,
+                                        fit: BoxFit.cover,
+                                        width: 90, height: 90,
+                                        errorBuilder: (_, __, ___) => _wishPlaceholder(),
+                                        loadingBuilder: (_, child, progress) =>
+                                            progress == null ? child : _wishPlaceholder(),
+                                      )
+                                    : _wishPlaceholder(),
                               ),
-                              child: const Icon(Icons.inventory_2_outlined, size: 32, color: Color(0xFFA6ABB4)),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
