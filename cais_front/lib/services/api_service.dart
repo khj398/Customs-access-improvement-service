@@ -172,6 +172,20 @@ class ApiService {
     return data['liked'] as bool;
   }
 
+  Future<List<String>> fetchAutocomplete(String q) async {
+    if (q.trim().isEmpty) return [];
+    final uri = Uri.parse('$_base/api/items/autocomplete')
+        .replace(queryParameters: {'q': q});
+    try {
+      final res = await http.get(uri).timeout(_timeout);
+      if (res.statusCode != 200) return [];
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      return List<String>.from(body['suggestions'] as List? ?? []);
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<List<AuctionItem>> fetchCalendarItems({
     required int year,
     required int month,

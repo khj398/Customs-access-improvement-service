@@ -47,12 +47,24 @@ class _SearchTabState extends State<SearchTab> {
   void _onInput(String val) {
     _ctrl.newDropsMode.value = false;
     _ctrl.searchItems(val);
+    _ctrl.fetchSuggestions(val);
   }
 
   void _clearSearch() {
     _inputCtrl.clear();
     _ctrl.newDropsMode.value = false;
     _ctrl.searchItems('');
+    _ctrl.clearSuggestions();
+  }
+
+  void _onSuggestionTap(String suggestion) {
+    _inputCtrl.text = suggestion;
+    _inputCtrl.selection = TextSelection.fromPosition(
+      TextPosition(offset: suggestion.length),
+    );
+    _ctrl.searchItems(suggestion);
+    _ctrl.clearSuggestions();
+    _focus.unfocus();
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
@@ -118,10 +130,70 @@ class _SearchTabState extends State<SearchTab> {
                     ),
                   );
                 }),
-                const SizedBox(height: 14),
+                const SizedBox(height: 6),
+
+                // 자동완성 제안 목록
+                Obx(() {
+                  final sugs = _ctrl.suggestions.toList();
+                  if (sugs.isEmpty) return const SizedBox.shrink();
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: const Color(0xFFE2E4EA)),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.07),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: sugs.asMap().entries.map((entry) {
+                        final i = entry.key;
+                        final s = entry.value;
+                        return InkWell(
+                          onTap: () => _onSuggestionTap(s),
+                          borderRadius: BorderRadius.vertical(
+                            top: i == 0 ? const Radius.circular(16) : Radius.zero,
+                            bottom: i == sugs.length - 1
+                                ? const Radius.circular(16)
+                                : Radius.zero,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.search,
+                                    size: 16, color: Color(0xFFB0B3BF)),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    s,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Color(0xFF1A1B33),
+                                    ),
+                                  ),
+                                ),
+                                const Icon(Icons.north_west,
+                                    size: 14, color: Color(0xFFB0B3BF)),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  );
+                }),
 
                 // Category drilldown chips (대분류 → 중분류 → 소분류)
                 Obx(() {
+                  final sugsVisible = _ctrl.suggestions.isNotEmpty;
                   final l1 = _ctrl.l1Categories.toList();
                   final l2 = _ctrl.l2Categories.toList();
                   final l3 = _ctrl.l3Categories.toList();
@@ -131,7 +203,7 @@ class _SearchTabState extends State<SearchTab> {
 
                   final stats = Map<int, int>.from(_ctrl.categoryStats);
 
-                  if (l1.isEmpty) return const SizedBox.shrink();
+                  if (l1.isEmpty || sugsVisible) return const SizedBox.shrink();
                   return Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [

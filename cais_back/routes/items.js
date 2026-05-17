@@ -13,6 +13,9 @@ const optionalAuth = require('../middleware/optionalAuth');
 // 물품 검색
 router.get('/search', optionalAuth, itemController.searchItems);
 
+// 자동완성
+router.get('/autocomplete', itemController.autocomplete);
+
 // 카테고리별 물품 건수 (반드시 /:pbacNo/... 앞에 위치)
 router.get('/category-stats', itemController.getCategoryStats);
 
