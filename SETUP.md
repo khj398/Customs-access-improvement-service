@@ -7,7 +7,7 @@
 | Node.js | 18 이상 | https://nodejs.org |
 | Flutter | 3.10 이상 | https://flutter.dev/docs/get-started/install |
 | MySQL | 8.0 이상 | https://dev.mysql.com/downloads/ |
-| Meilisearch | 최신 | https://www.meilisearch.com/docs/learn/getting_started/installation |
+| Docker | 최신 | https://www.docker.com/products/docker-desktop (Meilisearch 실행용) |
 
 ---
 
@@ -79,19 +79,31 @@ npm start        # 일반 실행
 
 ---
 
-## Step 5 — Meilisearch 실행
+## Step 5 — Meilisearch 실행 (Docker)
 
-별도 터미널에서 Meilisearch를 실행합니다.
+Docker Desktop이 실행 중인 상태에서 아래 명령어를 입력합니다.
 
 ```bash
-# Windows (다운로드한 실행파일이 있는 폴더에서)
-./meilisearch.exe --master-key cais-search-key
-
-# macOS / Linux
-./meilisearch --master-key cais-search-key
+docker run -d \
+  --name meilisearch \
+  -p 7700:7700 \
+  -e MEILI_MASTER_KEY=cais-search-key \
+  -e MEILI_ENV=development \
+  getmeili/meilisearch:v1.8
 ```
 
-`http://localhost:7700` 이 열리면 성공입니다.
+브라우저에서 `http://localhost:7700` 에 접속했을 때 API key 입력창이 뜨면 성공입니다.  
+입력창에 `cais-search-key` 를 입력하면 대시보드로 들어갈 수 있습니다.
+
+> **이미 컨테이너가 있는 경우 (두 번째 실행부터)**  
+> ```bash
+> docker start meilisearch
+> ```
+
+> **컨테이너 상태 확인**  
+> ```bash
+> docker ps | grep meilisearch
+> ```
 
 ---
 
@@ -128,9 +140,9 @@ flutter run              # 연결된 기기 / 에뮬레이터
 ## 실행 순서 요약
 
 ```
-[터미널 1] Meilisearch 실행
+[터미널 1] docker start meilisearch          ← 최초엔 docker run ... (Step 5 참고)
 [터미널 2] cd cais_back && npm run dev
-[터미널 3] node scripts/sync_meili.js  ← 최초 1회 또는 데이터 변경 시
+[터미널 3] node scripts/sync_meili.js        ← 최초 1회 또는 데이터 변경 시
 [터미널 4] cd cais_front && flutter run -d chrome
 ```
 
