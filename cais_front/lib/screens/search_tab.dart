@@ -276,8 +276,8 @@ class _SearchTabState extends State<SearchTab> {
                     final w = constraints.maxWidth;
                     // 화면 폭에 따라 열 수 결정
                     final cols = w < 520 ? 2 : w < 900 ? 3 : 4;
-                    // 카드 고정 높이: 이미지 148 + 텍스트 영역 82 = 230px
-                    const cardH = 230.0;
+                    // 카드 고정 높이: 이미지 148 + 패딩(24) + 카테고리(14) + 이름 2줄(37) + 간격(8) + 가격(19) = 250px
+                    const cardH = 252.0;
                     final hPad = 18.0 * 2;
                     final gap = 12.0 * (cols - 1);
                     final cardW = (w - hPad - gap) / cols;
