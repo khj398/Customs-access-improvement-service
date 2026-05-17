@@ -166,12 +166,33 @@ CATEGORY: 분류 결과 카테고리 경로 토큰
 ## 5. 룰 기반 분류 설계 원칙
 
 ### 5.1 룰 정의 방식
-룰은 build_classification.py 내부 build_rules()에서 관리한다.
-keywords_all: 반드시 포함되어야 하는 토큰 집합
-keywords_any: 하나라도 포함되면 매칭되는 토큰 집합
-category_path: DB의 category 트리 경로(한글)
-base_conf: 기본 신뢰도
-rationale_hint: 근거 문구
+룰은 `rules.yaml`에서 관리한다.
+
+| 필드 | 설명 |
+|------|------|
+| `keywords_all` | 전부 포함되어야 매칭 (AND) |
+| `keywords_any` | 하나라도 포함되면 매칭 (OR) |
+| `keywords_ko` | 한글 물품명(`cmdt_nm`) 원문에서 **부분 문자열** 매칭 (OR) |
+| `category_path` | DB의 category 트리 경로(한글) |
+| `confidence` | 기본 신뢰도 |
+| `rationale` | 근거 문구 |
+
+#### `keywords_ko` 상세 설명
+영문 토큰만으로는 분류하기 어려운 한글 물품명을 처리하기 위해 추가된 필드입니다.  
+`cmdt_nm` 원문에서 `kw in ko_text` 방식의 부분 문자열 검색을 수행합니다.
+
+```yaml
+- id: ko_beauty_candle
+  keywords_ko:
+    - 캔들
+    - 향초
+  category_path: [뷰티·위생, 향기·아로마]
+  confidence: 0.85
+  rationale: "한글 물품명에 캔들/향초 포함"
+```
+
+> **주의**: `keywords_ko`는 한글 정규식(`re.findall(r"[가-힣]{2,}")`)으로 추출된 토큰이 아니라, 원문 전체에서 `in` 연산으로 검색합니다.  
+> 따라서 `LP판`처럼 한글 1글자가 포함된 경우에는 `keywords_any: [LP]`를 함께 써야 합니다.
 
 ### 5.2 룰 우선순위(중요)
 룰은 리스트의 위에서부터 순서대로 처음 매칭되는 룰이 적용된다.
@@ -281,10 +302,12 @@ Rule 기반 분류 규칙 파일. 각 규칙의 구조:
 rules:
   - id: alcohol_wine           # 고유 식별자
     priority: 10               # 낮을수록 먼저 평가
-    keywords_any:              # 하나라도 포함되면 매칭 (OR)
+    keywords_any:              # 하나라도 포함되면 매칭 (OR, 영문 토큰)
       - WINE
       - WHISKY
-    keywords_all: []           # 전부 포함되어야 매칭 (AND)
+    keywords_all: []           # 전부 포함되어야 매칭 (AND, 영문 토큰)
+    keywords_ko:               # 한글 원문에서 부분 문자열 매칭 (OR)
+      - 와인
     category_path:             # DB category 트리 경로
       - 식품·음료
       - 음료
@@ -292,6 +315,9 @@ rules:
     confidence: 0.88
     rationale: "주류 키워드 직접 매칭"
 ```
+
+> `keywords_any`/`keywords_all`/`keywords_ko` 셋 중 하나만 있어도 유효한 룰입니다.  
+> CI(`classification_ci.yml`)는 세 필드 모두 없는 룰을 오류로 처리합니다.
 
 규칙 추가 기준 (주석 참조):
 - 5건 이상 fallback 물품이 동일 키워드 패턴 → 규칙 추가 검토

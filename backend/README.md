@@ -1,30 +1,40 @@
-# Backend MVP (FastAPI)
+# Backend (FastAPI) — ⚠️ 레거시
 
-DB 구축 단계부터 바로 사용할 수 있는 최소 API 서버입니다.
+> **현재 프로젝트는 `cais_back/` (Node.js/Express) 를 공식 백엔드로 사용합니다.**  
+> 이 디렉터리는 초기 MVP 검증용으로 작성된 FastAPI 서버이며, 더 이상 유지보수되지 않습니다.  
+> 신규 기능 추가나 배포에는 [`cais_back/README.md`](../cais_back/README.md)를 참조하세요.
 
-## 왜 지금 서버를 같이 두는가?
-- ETL/분류 결과를 즉시 API로 검증 가능
-- 프론트와 병렬 개발 가능
-- DB 스키마 변경 영향도를 빠르게 확인 가능
+---
 
-## 실행
+## 개요
+
+DB 구축 단계에서 ETL/분류 결과를 빠르게 API로 검증하기 위해 작성된 최소 FastAPI 서버입니다.
+
+## 실행 (레거시)
+
 ```bash
 cd backend
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate    # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ## 환경변수
-- `DB_HOST` (default: `127.0.0.1`)
-- `DB_PORT` (default: `3306`)
-- `DB_USER` (default: `root`)
-- `DB_PASSWORD` (default: `password`)
-- `DB_NAME` (default: `customs_auction`)
 
-## 엔드포인트
-- `GET /health`: 서버 상태
-- `GET /db/health`: DB 연결 확인
-- `GET /items?q=&limit=`: 물품 목록 조회(간단 검색)
-- `GET /items/{pbac_no}/{pbac_srno}/{cmdt_ln_no}/images`: 물품 이미지 URL 목록 조회
+| 변수 | 기본값 |
+|------|--------|
+| `DB_HOST` | `127.0.0.1` |
+| `DB_PORT` | `3306` |
+| `DB_USER` | `root` |
+| `DB_PASSWORD` | `password` |
+| `DB_NAME` | `customs_auction` |
+
+## 엔드포인트 (레거시)
+
+| 경로 | 설명 |
+|------|------|
+| `GET /health` | 서버 상태 확인 |
+| `GET /db/health` | DB 연결 확인 |
+| `GET /items?q=&limit=` | 물품 목록 조회 (단순 검색) |
+| `GET /items/{pbac_no}/{pbac_srno}/{cmdt_ln_no}/images` | 물품 이미지 URL 목록 |
