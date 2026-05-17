@@ -82,25 +82,35 @@ class ItemCard extends StatelessWidget {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item.cat, style: const TextStyle(color: Color(0xFF8E919D), fontSize: 12)),
-                  const SizedBox(height: 2),
-                  Text(
-                    item.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, height: 1.3),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    formatPriceFull(item.price),
-                    style: const TextStyle(color: _kPrimary, fontSize: 16, fontWeight: FontWeight.w800),
-                  ),
-                ],
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(item.cat,
+                            style: const TextStyle(color: Color(0xFF8E919D), fontSize: 12)),
+                        const SizedBox(height: 2),
+                        Text(
+                          item.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w800, height: 1.3),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      formatPriceFull(item.price),
+                      style: const TextStyle(
+                          color: _kPrimary, fontSize: 16, fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

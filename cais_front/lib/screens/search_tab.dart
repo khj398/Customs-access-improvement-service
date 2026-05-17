@@ -271,13 +271,24 @@ class _SearchTabState extends State<SearchTab> {
                 onRefresh: ctrl.loadItems,
                 child: NotificationListener<ScrollNotification>(
                 onNotification: _onScrollNotification,
-                child: GridView.builder(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final w = constraints.maxWidth;
+                    // 화면 폭에 따라 열 수 결정
+                    final cols = w < 520 ? 2 : w < 900 ? 3 : 4;
+                    // 카드 고정 높이: 이미지 148 + 패딩(22) + 카테고리(14) + 이름 2줄(37) + 가격(24) = 245 + 여유 13
+                    const cardH = 258.0;
+                    final hPad = 18.0 * 2;
+                    final gap = 12.0 * (cols - 1);
+                    final cardW = (w - hPad - gap) / cols;
+                    final ratio = cardW / cardH;
+                    return GridView.builder(
                   padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: 0.68,
+                    childAspectRatio: ratio,
                   ),
                   itemCount: items.length + (ctrl.hasMore.value ? 1 : 0),
                   itemBuilder: (_, i) {
@@ -290,6 +301,8 @@ class _SearchTabState extends State<SearchTab> {
                       );
                     }
                     return ItemCard(item: items[i]);
+                  },
+                );
                   },
                 ),
               ),

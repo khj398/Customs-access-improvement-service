@@ -9,37 +9,95 @@ const _kPrimaryDark = Color(0xFF171A3B);
 const _kSuccess = Color(0xFF10B981);
 const _kDanger = Color(0xFFEF4444);
 
-class DetailScreen extends StatelessWidget {
+class DetailScreen extends StatefulWidget {
   final AuctionItem item;
   const DetailScreen({super.key, required this.item});
 
   @override
+  State<DetailScreen> createState() => _DetailScreenState();
+}
+
+class _DetailScreenState extends State<DetailScreen> {
+  late final PageController _pageCtrl;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageCtrl = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final ctrl = Get.find<AppController>();
 
+    final screenW = MediaQuery.of(context).size.width;
+    final isWide = screenW >= 720;
+    final heroH = isWide ? 340.0 : 260.0;
+    final images = item.images;
+    final hasMultiple = images.length > 1;
+
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SingleChildScrollView(
+      backgroundColor: isWide ? const Color(0xFFF4F5F8) : Colors.white,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 860),
+          child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Hero image
+            // Hero image carousel
             SizedBox(
-              height: 300,
+              height: heroH,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  item.images.isNotEmpty
-                      ? Image.network(
-                          item.images.first,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          errorBuilder: (_, __, ___) => _detailPlaceholder(),
-                          loadingBuilder: (_, child, progress) =>
-                              progress == null ? child : _detailPlaceholder(),
+                  Container(color: const Color(0xFFF0F1F5)),
+                  // PageView for swiping
+                  images.isNotEmpty
+                      ? PageView.builder(
+                          controller: _pageCtrl,
+                          itemCount: images.length,
+                          onPageChanged: (i) => setState(() => _currentPage = i),
+                          itemBuilder: (_, i) => Image.network(
+                            images[i],
+                            fit: BoxFit.contain,
+                            width: double.infinity,
+                            height: double.infinity,
+                            errorBuilder: (_, __, ___) => _detailPlaceholder(),
+                            loadingBuilder: (_, child, progress) =>
+                                progress == null ? child : _detailPlaceholder(),
+                          ),
                         )
                       : _detailPlaceholder(),
+                  // Page indicator dots
+                  if (hasMultiple)
+                    Positioned(
+                      bottom: 12,
+                      left: 0, right: 0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(images.length, (i) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: _currentPage == i ? 18 : 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: _currentPage == i
+                                ? _kPrimary
+                                : Colors.white.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        )),
+                      ),
+                    ),
                   SafeArea(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -65,6 +123,51 @@ class DetailScreen extends StatelessWidget {
                 ],
               ),
             ),
+            // Thumbnail strip
+            if (hasMultiple)
+              Container(
+                height: 72,
+                color: const Color(0xFFF0F1F5),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: images.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final isActive = _currentPage == i;
+                    return GestureDetector(
+                      onTap: () => _pageCtrl.animateToPage(
+                        i,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                      ),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 52, height: 52,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isActive ? _kPrimary : Colors.transparent,
+                            width: 2,
+                          ),
+                          boxShadow: isActive
+                              ? [BoxShadow(color: _kPrimary.withOpacity(0.3), blurRadius: 6)]
+                              : [],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.network(
+                            images[i],
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                Container(color: const Color(0xFFE0E1E5)),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
 
             // Panel
             Transform.translate(
@@ -187,6 +290,8 @@ class DetailScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
         ),
       ),
     );
