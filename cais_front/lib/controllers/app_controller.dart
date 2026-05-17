@@ -39,6 +39,9 @@ class AppController extends GetxController {
   final showingToast = false.obs;
 
   Timer? _searchDebounce;
+  Timer? _autocompleteDebounce;
+
+  final suggestions = <String>[].obs;
 
   @override
   void onInit() {
@@ -73,6 +76,7 @@ class AppController extends GetxController {
   @override
   void onClose() {
     _searchDebounce?.cancel();
+    _autocompleteDebounce?.cancel();
     super.onClose();
   }
 
@@ -146,6 +150,27 @@ class AppController extends GetxController {
         isLoading.value = false;
       }
     });
+  }
+
+  void fetchSuggestions(String q) {
+    _autocompleteDebounce?.cancel();
+    if (q.trim().isEmpty) {
+      suggestions.clear();
+      return;
+    }
+    _autocompleteDebounce = Timer(const Duration(milliseconds: 200), () async {
+      try {
+        final results = await _api.fetchAutocomplete(q);
+        suggestions.assignAll(results);
+      } catch (_) {
+        suggestions.clear();
+      }
+    });
+  }
+
+  void clearSuggestions() {
+    _autocompleteDebounce?.cancel();
+    suggestions.clear();
   }
 
   Future<void> selectL1Category(Map<String, dynamic>? cat) async {
