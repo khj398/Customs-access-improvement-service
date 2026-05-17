@@ -40,6 +40,7 @@ class AppController extends GetxController {
 
   Timer? _searchDebounce;
   Timer? _autocompleteDebounce;
+  int _autocompleteRequestId = 0;
 
   final suggestions = <String>[].obs;
 
@@ -158,18 +159,26 @@ class AppController extends GetxController {
       suggestions.clear();
       return;
     }
+    // 요청 발사 전에 ID를 증가시켜 이전 응답을 무효화
+    final requestId = ++_autocompleteRequestId;
     _autocompleteDebounce = Timer(const Duration(milliseconds: 200), () async {
       try {
         final results = await _api.fetchAutocomplete(q);
-        suggestions.assignAll(results);
+        // 응답이 돌아왔을 때 현재 ID와 다르면 더 최신 요청이 있으므로 버림
+        if (requestId == _autocompleteRequestId) {
+          suggestions.assignAll(results);
+        }
       } catch (_) {
-        suggestions.clear();
+        if (requestId == _autocompleteRequestId) {
+          suggestions.clear();
+        }
       }
     });
   }
 
   void clearSuggestions() {
     _autocompleteDebounce?.cancel();
+    _autocompleteRequestId++; // 진행 중인 요청 응답이 와도 무시하도록 무효화
     suggestions.clear();
   }
 
