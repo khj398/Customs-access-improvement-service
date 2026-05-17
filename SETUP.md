@@ -84,12 +84,7 @@ npm start        # 일반 실행
 Docker Desktop이 실행 중인 상태에서 아래 명령어를 입력합니다.
 
 ```bash
-docker run -d \
-  --name meilisearch \
-  -p 7700:7700 \
-  -e MEILI_MASTER_KEY=cais-search-key \
-  -e MEILI_ENV=development \
-  getmeili/meilisearch:v1.8
+docker run -d --name meilisearch -p 7700:7700 -e MEILI_MASTER_KEY=cais-search-key -e MEILI_ENV=development getmeili/meilisearch:v1.8
 ```
 
 브라우저에서 `http://localhost:7700` 에 접속했을 때 API key 입력창이 뜨면 성공입니다.  
