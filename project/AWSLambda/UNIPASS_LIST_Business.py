@@ -41,9 +41,15 @@ def merge_and_cleanup(total_count):
             os.remove(filename)
             print(f"{filename} 통합 및 삭제 완료")
 
+    all_data.sort(key=lambda x: (
+        str(x.get("pbacNo", "")),
+        str(x.get("pbacSrno", "")),
+        str(x.get("cmdtLnNo", "")),
+    ))
+
     with open(FINAL_FILE, "w", encoding="utf-8") as f:
         json.dump(all_data, f, ensure_ascii=False, indent=4)
-    
+
     print(f"\n최종 통합 완료: {FINAL_FILE} (총 {len(all_data)}건)")
 
 def main():
