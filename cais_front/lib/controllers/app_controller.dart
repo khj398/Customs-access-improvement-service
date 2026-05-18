@@ -8,6 +8,7 @@ class AppController extends GetxController {
   final _api = ApiService();
 
   final allItems = <AuctionItem>[].obs;
+  final searchResultItems = <AuctionItem>[].obs;
   final isLoading = false.obs;
   final hasError = false.obs;
   final errorMessage = ''.obs;
@@ -86,11 +87,35 @@ class AppController extends GetxController {
     hasError.value = false;
     try {
       final items = await _api.fetchItems(
-        categoryId: activeCategoryId,
         page: 1,
         limit: ApiConfig.defaultPageSize,
       );
       allItems.assignAll(items);
+      searchResultItems.assignAll(items);
+      currentPage.value = 1;
+      hasMore.value = items.length >= ApiConfig.defaultPageSize;
+    } on ApiException catch (e) {
+      hasError.value = true;
+      errorMessage.value = e.message;
+    } catch (e) {
+      hasError.value = true;
+      errorMessage.value = '데이터를 불러올 수 없습니다.';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> loadSearchItems() async {
+    isLoading.value = true;
+    hasError.value = false;
+    try {
+      final items = await _api.fetchItems(
+        keyword: searchQuery.value.isEmpty ? null : searchQuery.value,
+        categoryId: activeCategoryId,
+        page: 1,
+        limit: ApiConfig.defaultPageSize,
+      );
+      searchResultItems.assignAll(items);
       currentPage.value = 1;
       hasMore.value = items.length >= ApiConfig.defaultPageSize;
     } on ApiException catch (e) {
@@ -115,7 +140,7 @@ class AppController extends GetxController {
         page: nextPage,
         limit: ApiConfig.defaultPageSize,
       );
-      allItems.addAll(items);
+      searchResultItems.addAll(items);
       currentPage.value = nextPage;
       hasMore.value = items.length >= ApiConfig.defaultPageSize;
     } catch (_) {
@@ -138,7 +163,7 @@ class AppController extends GetxController {
           page: 1,
           limit: ApiConfig.defaultPageSize,
         );
-        allItems.assignAll(items);
+        searchResultItems.assignAll(items);
         currentPage.value = 1;
         hasMore.value = items.length >= ApiConfig.defaultPageSize;
       } on ApiException catch (e) {
@@ -195,7 +220,7 @@ class AppController extends GetxController {
         l2Categories.assignAll(children);
       } catch (_) {}
     }
-    await loadItems();
+    await loadSearchItems();
   }
 
   Future<void> selectL2Category(Map<String, dynamic>? cat) async {
@@ -209,13 +234,13 @@ class AppController extends GetxController {
         l3Categories.assignAll(children);
       } catch (_) {}
     }
-    await loadItems();
+    await loadSearchItems();
   }
 
   Future<void> selectL3Category(Map<String, dynamic>? cat) async {
     newDropsMode.value = false;
     activeL3.value = cat;
-    await loadItems();
+    await loadSearchItems();
   }
 
   Future<void> toggleWish(AuctionItem item) async {
@@ -251,9 +276,9 @@ class AppController extends GetxController {
 
   List<AuctionItem> get filteredItems {
     if (newDropsMode.value) {
-      return allItems.where((i) => i.status == '진행중').toList();
+      return searchResultItems.where((i) => i.status == '진행중').toList();
     }
-    return List<AuctionItem>.from(allItems);
+    return List<AuctionItem>.from(searchResultItems);
   }
 
   List<AuctionItem> get wishedItems =>
