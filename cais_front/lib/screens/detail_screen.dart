@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../models/item.dart';
 import '../controllers/app_controller.dart';
+import '../services/api_service.dart';
 import '../utils/format.dart';
 
 const _kPrimary = Color(0xFF3B82F6);
@@ -20,11 +21,22 @@ class DetailScreen extends StatefulWidget {
 class _DetailScreenState extends State<DetailScreen> {
   late final PageController _pageCtrl;
   int _currentPage = 0;
+  List<AuctionItem> _bundledItems = [];
+  final _api = ApiService();
 
   @override
   void initState() {
     super.initState();
     _pageCtrl = PageController();
+    _loadBundledItems();
+  }
+
+  Future<void> _loadBundledItems() async {
+    final all = await _api.fetchBundledItems(widget.item.pbacNoStr);
+    if (!mounted) return;
+    setState(() {
+      _bundledItems = all.where((i) => i.cmdtLnNo != widget.item.cmdtLnNo).toList();
+    });
   }
 
   @override
@@ -236,8 +248,8 @@ class _DetailScreenState extends State<DetailScreen> {
                     const SizedBox(height: 12),
                     _LotTable(item: item),
                     // 번들 구매 필수 물품 섹션
-                    Obx(() {
-                      final bundled = ctrl.getBundledItems(item);
+                    Builder(builder: (_) {
+                      final bundled = _bundledItems;
                       if (bundled.isEmpty) return const SizedBox.shrink();
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,13 +378,24 @@ class _BundledCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 44, height: 44,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEAECF2),
-                borderRadius: BorderRadius.circular(10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 44, height: 44,
+                child: item.images.isNotEmpty
+                    ? Image.network(
+                        item.images.first,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: const Color(0xFFEAECF2),
+                          child: const Icon(Icons.inventory_2_outlined, size: 22, color: Color(0xFFA6ABB4)),
+                        ),
+                      )
+                    : Container(
+                        color: const Color(0xFFEAECF2),
+                        child: const Icon(Icons.inventory_2_outlined, size: 22, color: Color(0xFFA6ABB4)),
+                      ),
               ),
-              child: const Icon(Icons.inventory_2_outlined, size: 22, color: Color(0xFFA6ABB4)),
             ),
             const SizedBox(width: 12),
             Expanded(

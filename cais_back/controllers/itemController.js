@@ -105,12 +105,33 @@ exports.getCategoryStats = async (req, res) => {
   }
 };
 
+exports.getCustomsStats = async (req, res) => {
+  try {
+    const customs = await itemModel.getCustomsStats();
+    res.json({ customs });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+};
+
 exports.getCalendarItems = async (req, res) => {
   try {
     const year  = parseInt(req.query.year  || new Date().getFullYear());
     const month = parseInt(req.query.month || new Date().getMonth() + 1);
     const userId = req.user?.userId ?? null;
     const items = await itemModel.findByMonth(year, month, userId);
+    res.json({ items });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '서버 오류' });
+  }
+};
+
+exports.getBundledItems = async (req, res) => {
+  try {
+    const { pbacNo } = req.params;
+    const items = await itemModel.findByPbacNo(pbacNo);
     res.json({ items });
   } catch (err) {
     console.error(err);

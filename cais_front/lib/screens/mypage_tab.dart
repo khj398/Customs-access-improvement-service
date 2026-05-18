@@ -20,8 +20,15 @@ class MypageTab extends StatefulWidget {
 }
 
 class _MypageTabState extends State<MypageTab> {
-  DateTime _focusedDay = DateTime(2026, 3, 1);
+  DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+
+  @override
+  void initState() {
+    super.initState();
+    final ctrl = Get.find<AppController>();
+    ctrl.loadCalendarItems(_focusedDay.year, _focusedDay.month);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -123,7 +130,10 @@ class _MypageTabState extends State<MypageTab> {
                         final dayItems = ctrl.getItemsForDay(selected);
                         if (dayItems.isNotEmpty) _showDaySheet(context, selected, dayItems, wishIds);
                       },
-                      onPageChanged: (focused) => setState(() => _focusedDay = focused),
+                      onPageChanged: (focused) {
+                        setState(() => _focusedDay = focused);
+                        ctrl.loadCalendarItems(focused.year, focused.month);
+                      },
                       calendarStyle: CalendarStyle(
                         todayDecoration: const BoxDecoration(color: _kPrimaryDark, shape: BoxShape.circle),
                         selectedDecoration: BoxDecoration(

@@ -9,6 +9,10 @@ class AppController extends GetxController {
 
   final allItems = <AuctionItem>[].obs;
   final searchResultItems = <AuctionItem>[].obs;
+  final calendarItems = <AuctionItem>[].obs;
+  final curatedItems = <AuctionItem>[].obs;
+  // {cstmSgn, cstmName, itemCount} 목록 — 활성 물품 수 내림차순
+  final nearbyCustoms = <Map<String, dynamic>>[].obs;
   final isLoading = false.obs;
   final hasError = false.obs;
   final errorMessage = ''.obs;
@@ -31,6 +35,7 @@ class AppController extends GetxController {
        activeL1.value?['categoryId']) as int?;
 
   final categoryStats = <int, int>{}.obs; // categoryId → 물품 건수
+  final recentCategoryIds = <int>[];     // 검색탭 최근 선택 카테고리 (max 5)
 
   final searchQuery = ''.obs;
   final currentTab = 0.obs;
@@ -50,8 +55,14 @@ class AppController extends GetxController {
     super.onInit();
     loadRootCategories();
     loadCategoryStats();
-    loadItems();
+    _initData();
     loadWishlist();
+  }
+
+  Future<void> _initData() async {
+    await loadItems();
+    loadCuratedItems();
+    loadNearbyCustoms();
   }
 
   Future<void> loadWishlist() async {
@@ -126,6 +137,68 @@ class AppController extends GetxController {
       errorMessage.value = '데이터를 불러올 수 없습니다.';
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> loadNearbyCustoms() async {
+    try {
+      final list = await _api.fetchCustomsStats();
+      nearbyCustoms.assignAll(list);
+    } catch (_) {}
+  }
+
+  Future<void> loadCalendarItems(int year, int month) async {
+    try {
+      final items = await _api.fetchCalendarItems(year: year, month: month);
+      calendarItems.assignAll(items);
+    } catch (_) {}
+  }
+
+  Future<void> loadCuratedItems() async {
+    // 찜한 상품의 cat 집합
+    final wishedCats = allItems
+        .where((i) => wishlistIds.contains(i.likeKey))
+        .map((i) => i.cat)
+        .toSet();
+
+    // 최근 카테고리 ID로 추가 fetch
+    final extra = <AuctionItem>[];
+    if (recentCategoryIds.isNotEmpty) {
+      try {
+        final fetched = await _api.fetchItems(
+          categoryId: recentCategoryIds.first,
+          page: 1,
+          limit: ApiConfig.defaultPageSize,
+        );
+        extra.addAll(fetched);
+      } catch (_) {}
+    }
+
+    // 후보 풀: allItems + 추가 fetch (중복 제거)
+    final seen = <String>{};
+    final pool = <AuctionItem>[];
+    for (final item in [...allItems, ...extra]) {
+      if (seen.add(item.likeKey)) pool.add(item);
+    }
+
+    // 정렬: 찜 카테고리 매칭 > 최근 검색 카테고리 매칭 > 나머지
+    pool.sort((a, b) {
+      int scoreOf(AuctionItem i) {
+        if (wishedCats.contains(i.cat)) return 0;
+        if (recentCategoryIds.isNotEmpty) {
+          // extra에 포함된 아이템은 최근 카테고리 기반
+          if (extra.any((e) => e.likeKey == i.likeKey)) return 1;
+        }
+        return 2;
+      }
+      return scoreOf(a).compareTo(scoreOf(b));
+    });
+
+    // 찜 카테고리도 없고 최근 검색도 없으면 진행 중 전체 fallback
+    if (wishedCats.isEmpty && recentCategoryIds.isEmpty) {
+      curatedItems.assignAll(allItems.where((i) => i.status == '진행중').toList());
+    } else {
+      curatedItems.assignAll(pool);
     }
   }
 
@@ -207,6 +280,13 @@ class AppController extends GetxController {
     suggestions.clear();
   }
 
+  void _recordCategoryId(int? id) {
+    if (id == null) return;
+    recentCategoryIds.remove(id);
+    recentCategoryIds.insert(0, id);
+    if (recentCategoryIds.length > 5) recentCategoryIds.removeLast();
+  }
+
   Future<void> selectL1Category(Map<String, dynamic>? cat) async {
     newDropsMode.value = false;
     activeL1.value = cat;
@@ -215,6 +295,7 @@ class AppController extends GetxController {
     l2Categories.clear();
     l3Categories.clear();
     if (cat != null) {
+      _recordCategoryId(cat['categoryId'] as int?);
       try {
         final children = await _api.fetchSubCategories(cat['categoryId'] as int);
         l2Categories.assignAll(children);
@@ -229,6 +310,7 @@ class AppController extends GetxController {
     activeL3.value = null;
     l3Categories.clear();
     if (cat != null) {
+      _recordCategoryId(cat['categoryId'] as int?);
       try {
         final children = await _api.fetchSubCategories(cat['categoryId'] as int);
         l3Categories.assignAll(children);
@@ -240,6 +322,7 @@ class AppController extends GetxController {
   Future<void> selectL3Category(Map<String, dynamic>? cat) async {
     newDropsMode.value = false;
     activeL3.value = cat;
+    if (cat != null) _recordCategoryId(cat['categoryId'] as int?);
     await loadSearchItems();
   }
 
@@ -255,6 +338,7 @@ class AppController extends GetxController {
     try {
       await _api.toggleLike(item.pbacNoStr, item.pbacSrno, item.cmdtLnNo);
       _toast(wasWished ? '찜 목록에서 제거되었습니다' : '찜 목록에 추가되었습니다 ♥');
+      loadCuratedItems();
     } catch (e) {
       // 실패 시 롤백
       if (wasWished) {
@@ -284,16 +368,7 @@ class AppController extends GetxController {
   List<AuctionItem> get wishedItems =>
       allItems.where((i) => wishlistIds.contains(i.likeKey)).toList();
 
-  Map<String, List<AuctionItem>> get nearbyItems {
-    final result = <String, List<AuctionItem>>{};
-    for (final loc in ['인천세관', '부산세관', '서울세관', '광양세관']) {
-      final items = allItems.where((i) => i.customs == loc && i.status == '진행중').toList();
-      if (items.isNotEmpty) result[loc] = items;
-    }
-    return result;
-  }
-
-  /// 같은 공매번호(pbacNo)에 속하는 다른 물품 목록 (번들 구매 필수 물품)
+/// 같은 공매번호(pbacNo)에 속하는 다른 물품 목록 (번들 구매 필수 물품)
   List<AuctionItem> getBundledItems(AuctionItem target) {
     return allItems.where((i) =>
         i.pbacNoStr == target.pbacNoStr && i.cmdtLnNo != target.cmdtLnNo
@@ -301,7 +376,7 @@ class AppController extends GetxController {
   }
 
   List<AuctionItem> getItemsForDay(DateTime day) {
-    return allItems.where((i) {
+    return calendarItems.where((i) {
       final d = i.endDay;
       return d.year == day.year && d.month == day.month && d.day == day.day;
     }).toList();

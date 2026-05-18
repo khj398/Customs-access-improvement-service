@@ -99,6 +99,30 @@ class ApiService {
     }
   }
 
+  Future<List<AuctionItem>> fetchBundledItems(String pbacNo) async {
+    final uri = Uri.parse('$_base/api/items/${Uri.encodeComponent(pbacNo)}/bundle');
+    try {
+      final res = await http.get(uri).timeout(_timeout);
+      if (res.statusCode != 200) return [];
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      final items = body['items'] as List? ?? [];
+      return items.map((e) => AuctionItem.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchCustomsStats() async {
+    final uri = Uri.parse('$_base/api/items/customs-stats');
+    try {
+      final res = await http.get(uri).timeout(_timeout);
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      return List<Map<String, dynamic>>.from(body['customs'] as List? ?? []);
+    } catch (_) {
+      return [];
+    }
+  }
+
   Future<Map<int, int>> fetchCategoryStats() async {
     final uri = Uri.parse('$_base/api/items/category-stats');
     try {

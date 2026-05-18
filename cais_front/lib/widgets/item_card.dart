@@ -11,8 +11,9 @@ const _kDanger = Color(0xFFEF4444);
 class ItemCard extends StatelessWidget {
   final AuctionItem item;
   final bool small;
+  final double? imageHeight;
 
-  const ItemCard({super.key, required this.item, this.small = false});
+  const ItemCard({super.key, required this.item, this.small = false, this.imageHeight});
 
   Widget _buildPlaceholder() => Container(
         decoration: const BoxDecoration(
@@ -28,7 +29,7 @@ class ItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctrl = Get.find<AppController>();
-    final thumbH = small ? 120.0 : 148.0;
+    final thumbH = imageHeight ?? (small ? 120.0 : 148.0);
 
     return GestureDetector(
       onTap: () => Get.to(() => DetailScreen(item: item)),

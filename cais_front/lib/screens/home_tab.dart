@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:get/get.dart';
 import '../controllers/app_controller.dart';
 import '../widgets/item_card.dart';
+import 'curated_screen.dart';
+import 'customs_screen.dart';
+import 'new_drops_screen.dart';
 
 const _kPrimary = Color(0xFF3B82F6);
 const _kPrimaryDark = Color(0xFF171A3B);
@@ -80,7 +84,7 @@ class HomeTab extends StatelessWidget {
                       style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 12),
                   GestureDetector(
-                    onTap: () => ctrl.goToSearch(newDrops: true),
+                    onTap: () => Get.to(() => const NewDropsScreen()),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
@@ -103,20 +107,20 @@ class HomeTab extends StatelessWidget {
               children: [
                 const Text('Curated For You', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                 GestureDetector(
-                  onTap: () => ctrl.goToSearch(),
+                  onTap: () => Get.to(() => const CuratedScreen()),
                   child: const Text('SEE ALL', style: TextStyle(color: Color(0xFFB4B6BF), fontWeight: FontWeight.w800, fontSize: 13)),
                 ),
               ],
             ),
             const SizedBox(height: 12),
             Obx(() {
-              if (ctrl.isLoading.value && ctrl.allItems.isEmpty) {
+              if (ctrl.isLoading.value && ctrl.curatedItems.isEmpty) {
                 return const SizedBox(
                   height: 240,
                   child: Center(child: CircularProgressIndicator()),
                 );
               }
-              if (ctrl.hasError.value && ctrl.allItems.isEmpty) {
+              if (ctrl.hasError.value && ctrl.curatedItems.isEmpty) {
                 return SizedBox(
                   height: 240,
                   child: Center(
@@ -135,41 +139,55 @@ class HomeTab extends StatelessWidget {
                   ),
                 );
               }
-              final curated = ctrl.allItems.where((i) => i.status == '진행중').take(6).toList();
+              final curated = ctrl.curatedItems.take(6).toList();
+              if (curated.isEmpty) {
+                return const SizedBox(
+                  height: 240,
+                  child: Center(child: Text('진행 중인 공매가 없습니다', style: TextStyle(color: Color(0xFF9DA0AD)))),
+                );
+              }
               return SizedBox(
                 height: 240,
-                child: curated.isEmpty
-                    ? const Center(child: Text('진행 중인 공매가 없습니다', style: TextStyle(color: Color(0xFF9DA0AD))))
-                    : ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: curated.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 12),
-                        itemBuilder: (_, i) => SizedBox(width: 160, child: ItemCard(item: curated[i], small: true)),
-                      ),
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(context).copyWith(dragDevices: {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.trackpad,
+                  }),
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: curated.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (_, i) => SizedBox(width: 160, child: ItemCard(item: curated[i], small: true)),
+                  ),
+                ),
               );
             }),
             const SizedBox(height: 20),
 
-            // Live Auctions Nearby
+            // Customs Overview
             Row(
               children: const [
-                Text('Live Auctions Nearby', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                Text('전국 세관 현황', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                 SizedBox(width: 8),
-                Icon(Icons.location_on, color: _kPrimary, size: 20),
+                Icon(Icons.account_balance, color: _kPrimary, size: 20),
               ],
             ),
             const SizedBox(height: 12),
             Obx(() {
-              ctrl.isLoading.value; // nearbyItems는 computed getter → 명시적 reactive 등록 필요
-              final nearby = ctrl.nearbyItems;
-              if (nearby.isEmpty) {
+              final customs = ctrl.nearbyCustoms;
+              if (customs.isEmpty) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(child: Text('현재 진행 중인 인근 경매가 없습니다', style: TextStyle(color: Color(0xFF9DA0AD)))),
+                  child: Center(child: Text('세관 정보를 불러오는 중입니다', style: TextStyle(color: Color(0xFF9DA0AD)))),
                 );
               }
               return Column(
-                children: nearby.entries.map((e) => _NearbyCard(loc: e.key, items: e.value)).toList(),
+                children: customs.map((c) => _NearbyCard(
+                  loc: (c['cstmName'] as String?) ?? '',
+                  itemCount: (c['itemCount'] as num?)?.toInt() ?? 0,
+                  cstmSgn: (c['cstmSgn'] as String?) ?? '',
+                )).toList(),
               );
             }),
           ],
@@ -182,67 +200,50 @@ class HomeTab extends StatelessWidget {
 
 class _NearbyCard extends StatefulWidget {
   final String loc;
-  final List items;
-  const _NearbyCard({required this.loc, required this.items});
+  final int itemCount;
+  final String cstmSgn;
+  const _NearbyCard({required this.loc, required this.itemCount, required this.cstmSgn});
 
   @override
   State<_NearbyCard> createState() => _NearbyCardState();
 }
 
 class _NearbyCardState extends State<_NearbyCard> {
-  bool _expanded = false;
-
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEBEDF2)),
-      ),
-      child: Column(
-        children: [
-          GestureDetector(
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Row(
+    return GestureDetector(
+      onTap: () => Get.to(() => CustomsScreen(
+            customs: widget.loc,
+            cstmSgn: widget.cstmSgn,
+          )),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEBEDF2)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40, height: 40,
+              decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFDBEAFE)),
+              child: const Icon(Icons.location_on, color: _kPrimary, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 40, height: 40,
-                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFDBEAFE)),
-                  child: const Icon(Icons.location_on, color: _kPrimary, size: 18),
-                ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(widget.loc, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                    Text('${widget.items.length} ITEMS ACTIVE',
-                        style: const TextStyle(color: Color(0xFF8E919D), fontSize: 12)),
-                  ],
-                ),
-                const Spacer(),
-                Icon(_expanded ? Icons.expand_less : Icons.chevron_right, color: const Color(0xFFC4C5CB)),
+                Text(widget.loc, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                Text('${widget.itemCount} ITEMS ACTIVE',
+                    style: const TextStyle(color: Color(0xFF8E919D), fontSize: 12)),
               ],
             ),
-          ),
-          if (_expanded) ...[
-            const SizedBox(height: 14),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.72,
-              ),
-              itemCount: widget.items.length > 4 ? 4 : widget.items.length,
-              itemBuilder: (_, i) => ItemCard(item: widget.items[i]),
-            ),
+            const Spacer(),
+            const Icon(Icons.chevron_right, color: Color(0xFFC4C5CB)),
           ],
-        ],
+        ),
       ),
     );
   }

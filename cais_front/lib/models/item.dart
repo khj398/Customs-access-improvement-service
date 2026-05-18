@@ -7,6 +7,7 @@ class AuctionItem {
   final String cat;
   final int price;
   final String customs;
+  final String cstmSgn;
   final String startDate;
   final String endDate;
   final String status;
@@ -24,6 +25,7 @@ class AuctionItem {
     required this.cat,
     required this.price,
     required this.customs,
+    this.cstmSgn = '',
     required this.startDate,
     required this.endDate,
     required this.status,
@@ -64,6 +66,7 @@ class AuctionItem {
           ? (json['pbacPrngPrc'] as num).toInt()
           : int.tryParse((json['pbacPrngPrc'] ?? '0').toString()) ?? 0,
       customs: json['cstmName'] ?? '',
+      cstmSgn: (json['cstmSgn'] ?? '').toString(),
       startDate: (json['pbacStrtDttm'] ?? '').toString(),
       endDate: endDate,
       status: status,

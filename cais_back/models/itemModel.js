@@ -179,6 +179,8 @@ exports.findByPbacNo = async (pbacNo) => {
       ai.cmdt_wght AS cmdtWght, ai.cmdt_wght_ut_cd AS cmdtWghtUtCd,
       ai.pbac_prng_prc AS pbacPrngPrc,
       ai.atnt_cmdt AS atntCmdt, ai.atnt_cmdt_nm AS atntCmdtNm, ai.pbac_cond_cn AS pbacCondCn,
+      a.pbac_strt_dttm AS pbacStrtDttm, a.pbac_end_dttm AS pbacEndDttm,
+      a.cstm_sgn AS cstmSgn, co.cstm_name AS cstmName,
       ic.category_id AS categoryId, c.name_ko AS categoryName,
       (
         SELECT GROUP_CONCAT(aii.image_url ORDER BY aii.image_seq SEPARATOR '|')
@@ -186,12 +188,29 @@ exports.findByPbacNo = async (pbacNo) => {
         WHERE aii.pbac_no = ai.pbac_no AND aii.pbac_srno = ai.pbac_srno AND aii.cmdt_ln_no = ai.cmdt_ln_no
       ) AS imageUrls
     FROM auction_item ai
+    JOIN auction a ON ai.pbac_no = a.pbac_no
+    LEFT JOIN customs_office co ON a.cstm_sgn = co.cstm_sgn
     LEFT JOIN item_classification ic
       ON ic.pbac_no = ai.pbac_no AND ic.pbac_srno = ai.pbac_srno AND ic.cmdt_ln_no = ai.cmdt_ln_no
     LEFT JOIN category c ON ic.category_id = c.category_id
     WHERE ai.pbac_no = ?
     ORDER BY ai.pbac_srno, ai.cmdt_ln_no
   `, [pbacNo]);
+  return rows;
+};
+
+// 세관별 활성 물품 건수 (물품 수 내림차순)
+exports.getCustomsStats = async () => {
+  const [rows] = await pool.query(`
+    SELECT a.cstm_sgn AS cstmSgn, co.cstm_name AS cstmName, COUNT(ai.cmdt_ln_no) AS itemCount
+    FROM auction a
+    LEFT JOIN customs_office co ON a.cstm_sgn = co.cstm_sgn
+    LEFT JOIN auction_item ai ON a.pbac_no = ai.pbac_no
+    WHERE a.pbac_end_dttm >= NOW()
+    GROUP BY a.cstm_sgn
+    HAVING itemCount > 0
+    ORDER BY itemCount DESC
+  `);
   return rows;
 };
 
