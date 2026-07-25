@@ -19,8 +19,8 @@ router.get('/autocomplete', itemController.autocomplete);
 // 카테고리별 물품 건수 (반드시 /:pbacNo/... 앞에 위치)
 router.get('/category-stats', itemController.getCategoryStats);
 
-// 세관별 활성 물품 건수
-router.get('/customs-stats', itemController.getCustomsStats);
+// 세관별 활성 물품 건수 (lat/lng 쿼리 또는 로그인 사용자의 저장 위치 있으면 거리순)
+router.get('/customs-stats', optionalAuth, itemController.getCustomsStats);
 
 // 달력용 — 특정 연월에 마감되는 물품 목록 (반드시 /:pbacNo/... 앞에 위치)
 router.get('/calendar', optionalAuth, itemController.getCalendarItems);

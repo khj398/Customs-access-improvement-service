@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../controllers/app_controller.dart';
 import '../services/api_service.dart';
 import 'main_screen.dart';
 
@@ -96,6 +97,10 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   void _goMain() {
+    final ctrl = Get.find<AppController>();
+    ctrl.loadBaseLocation();
+    ctrl.loadSearchSubscriptions();
+    ctrl.registerPushToken();
     Get.off(() => const MainScreen(), transition: Transition.fadeIn);
   }
 

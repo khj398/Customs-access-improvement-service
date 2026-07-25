@@ -7,6 +7,7 @@ const itemModel  = require('../models/itemModel');
 const meiliModel = require('../models/meiliModel');
 const likeModel  = require('../models/likeModel');
 const bidModel   = require('../models/bidModel');
+const userModel  = require('../models/userModel');
 
 exports.searchItems = async (req, res) => {
   try {
@@ -107,7 +108,19 @@ exports.getCategoryStats = async (req, res) => {
 
 exports.getCustomsStats = async (req, res) => {
   try {
-    const customs = await itemModel.getCustomsStats();
+    let lat = req.query.lat ? parseFloat(req.query.lat) : null;
+    let lng = req.query.lng ? parseFloat(req.query.lng) : null;
+
+    // 쿼리로 좌표를 안 준 경우, 로그인 사용자의 저장된 기본 위치를 사용
+    if ((lat == null || lng == null) && req.user) {
+      const loc = await userModel.getBaseLocation(req.user.userId);
+      if (loc && loc.baseLatitude != null && loc.baseLongitude != null) {
+        lat = loc.baseLatitude;
+        lng = loc.baseLongitude;
+      }
+    }
+
+    const customs = await itemModel.getCustomsStats(lat, lng);
     res.json({ customs });
   } catch (err) {
     console.error(err);

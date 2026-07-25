@@ -14,19 +14,31 @@ exports.findMyLikes = async (userId) => {
       wt.pbac_srno  AS pbacSrno,
       wt.cmdt_ln_no AS cmdtLnNo,
       wt.created_at AS createdAt,
-      ai.cmdt_nm         AS cmdtNm,
-      ai.pbac_prng_prc   AS pbacPrngPrc,
-      ai.atnt_cmdt_nm    AS atntCmdtNm,
-      a.pbac_strt_dttm   AS pbacStrtDttm,
-      a.pbac_end_dttm    AS pbacEndDttm,
-      co.cstm_name       AS cstmName,
-      ic.category_id     AS categoryId,
-      c.name_ko          AS categoryName
+      ai.cmdt_nm           AS cmdtNm,
+      ai.pbac_prng_prc     AS pbacPrngPrc,
+      ai.atnt_cmdt_nm      AS atntCmdtNm,
+      ai.cmdt_qty          AS cmdtQty,
+      ai.cmdt_qty_ut_cd    AS cmdtQtyUtCd,
+      ai.cmdt_wght         AS cmdtWght,
+      ai.cmdt_wght_ut_cd   AS cmdtWghtUtCd,
+      a.pbac_strt_dttm     AS pbacStrtDttm,
+      a.pbac_end_dttm      AS pbacEndDttm,
+      a.cstm_sgn           AS cstmSgn,
+      co.cstm_name         AS cstmName,
+      bw.snar_name         AS snarName,
+      ic.category_id       AS categoryId,
+      c.name_ko            AS categoryName,
+      (
+        SELECT GROUP_CONCAT(aii.image_url ORDER BY aii.image_seq SEPARATOR '|')
+        FROM auction_item_image aii
+        WHERE aii.pbac_no = wt.pbac_no AND aii.pbac_srno = wt.pbac_srno AND aii.cmdt_ln_no = wt.cmdt_ln_no
+      ) AS imageUrls
     FROM user_watchlist_target wt
     JOIN auction_item ai
       ON wt.pbac_no = ai.pbac_no AND wt.pbac_srno = ai.pbac_srno AND wt.cmdt_ln_no = ai.cmdt_ln_no
     JOIN auction a ON wt.pbac_no = a.pbac_no
     LEFT JOIN customs_office co ON a.cstm_sgn = co.cstm_sgn
+    LEFT JOIN bonded_warehouse bw ON a.snar_sgn = bw.snar_sgn
     LEFT JOIN item_classification ic
       ON ic.pbac_no = wt.pbac_no AND ic.pbac_srno = wt.pbac_srno AND ic.cmdt_ln_no = wt.cmdt_ln_no
     LEFT JOIN category c ON ic.category_id = c.category_id

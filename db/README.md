@@ -64,6 +64,17 @@ SQL 파일 내용을 통째로 복사해서 Workbench 쿼리 탭에 붙여넣어
   - `auction_item.atnt_cmdt`: `CHAR(1)` → `ENUM('Y','N')` (유효값 외 삽입 차단)
   > **주의**: `atnt_cmdt` 변경 전 `SELECT DISTINCT atnt_cmdt FROM auction_item;`으로 기존 값 확인 필요
 
+1-3) `schema_patch_v4.sql`  
+- 위치 기반 세관 추천 + 알림(FCM 푸시) 기능 확장. `schema_app_user_unified_v1.sql` 이후에 실행한다.
+  - `customs_office`: `latitude`/`longitude` 컬럼 추가 + 현재 DB에 있는 세관 5곳(평택/인천/부산/인천공항/김포공항세관) 좌표 시딩
+  - `user_notification_rule.event_type`: `AUCTION_STARTING_SOON`(경매 시작 임박) 값 추가
+  - `user_device_token` (신규): FCM 기기 토큰 저장
+  - `user_search_subscription` (신규): 관심 검색어 구독(신규 물품 알림용, `user_recent_search`와는 별개)
+
+1-4) `schema_patch_v5.sql`  
+- ETL 재수집으로 새로 등장한 세관 3곳(수원/양산/안양세관)의 좌표 시딩. `schema_patch_v4.sql` 이후 아무 때나 실행 가능.
+- ETL로 새 세관이 추가될 때마다 `SELECT cstm_sgn, cstm_name, latitude, longitude FROM customs_office WHERE latitude IS NULL;`로 좌표 누락 여부를 확인하고, 있으면 이 패턴대로 좌표를 추가해야 거리순 정렬에 반영된다.
+
 1-2) `schema_app_user_unified_v1.sql` ⭐ **채택된 방식**  
 - 사용자 도메인(회원/소셜연동/관심대상/알림룰/알림이력/최근검색어/입찰이력)을 **`customs_auction` 단일 스키마**에 통합 생성한다.
 - 백엔드(`cais_back/models/userModel.js`, `likeModel.js` 등)도 이 방식을 기준으로 작성되어 있다.
@@ -155,6 +166,8 @@ python classification/build_classification.py
 1. `customs_auction` 스키마 생성 및 기본 DB 선택
 2. `schema_create.sql` 실행 (기존 데이터 유지가 필요하면 `schema_patch_v2.sql` → `schema_patch_v3.sql` 순서로 적용)
 3. `schema_app_user_unified_v1.sql` 실행 (`customs_auction` 스키마 선택 상태에서 실행)
+3-1. `schema_patch_v4.sql` 실행 (위치/알림 기능 확장 — 3번 이후에 실행)
+3-2. `schema_patch_v5.sql` 실행 (ETL로 새로 추가된 세관 좌표 시딩 — ETL 이후 실행해도 무방)
 4. `seed_category.sql` → `seed_category_extend.sql` 순서 실행
 5. `seed_synonym.sql` → `seed_synonym_extend.sql` 순서 실행
 6. `python etl/load_unipass_to_mysql.py` 실행

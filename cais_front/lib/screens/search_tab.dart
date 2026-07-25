@@ -132,6 +132,50 @@ class _SearchTabState extends State<SearchTab> {
                 }),
                 const SizedBox(height: 6),
 
+                // 관심 검색어 구독 (당근마켓 스타일) — 검색어가 있고 자동완성 목록이 닫혀있을 때만 노출
+                Obx(() {
+                  final q = _ctrl.searchQuery.value.trim();
+                  if (q.isEmpty || _ctrl.suggestions.isNotEmpty) return const SizedBox.shrink();
+                  final sub = _ctrl.subscriptionFor(q);
+                  final subscribed = sub != null;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: GestureDetector(
+                      onTap: () => subscribed
+                          ? _ctrl.removeSearchSubscription(sub['subscriptionId'] as int)
+                          : _ctrl.subscribeToSearch(q),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: subscribed ? const Color(0xFFEEF3FF) : const Color(0xFFF8F8FA),
+                          borderRadius: BorderRadius.circular(12),
+                          border: subscribed ? Border.all(color: _kPrimary, width: 1) : null,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              subscribed ? Icons.notifications_active : Icons.notifications_none,
+                              size: 18,
+                              color: subscribed ? _kPrimary : const Color(0xFF8E919D),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                subscribed ? '"$q" 신규 물품 알림 구독 중' : '"$q" 신규 물품 알림 받기',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: subscribed ? _kPrimary : const Color(0xFF6B7280),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+
                 // 자동완성 제안 목록
                 Obx(() {
                   final sugs = _ctrl.suggestions.toList();

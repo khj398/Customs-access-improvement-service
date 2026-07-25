@@ -18,6 +18,7 @@ const likeRoutes     = require('./routes/likes');
 const userRoutes     = require('./routes/users');
 const fileRoutes     = require('./routes/files');
 const categoryRoutes = require('./routes/categories');
+const searchSubscriptionRoutes = require('./routes/searchSubscriptions');
 
 app.use(cors());
 app.use(express.json());
@@ -42,6 +43,7 @@ app.use('/api/likes',      likeRoutes);
 app.use('/api/users',      userRoutes);
 app.use('/api/files',      fileRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/search-subscriptions', searchSubscriptionRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'CAIS API Server' });

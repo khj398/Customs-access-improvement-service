@@ -187,6 +187,7 @@ class HomeTab extends StatelessWidget {
                   loc: (c['cstmName'] as String?) ?? '',
                   itemCount: (c['itemCount'] as num?)?.toInt() ?? 0,
                   cstmSgn: (c['cstmSgn'] as String?) ?? '',
+                  distanceKm: (c['distanceKm'] as num?)?.toDouble(),
                 )).toList(),
               );
             }),
@@ -202,7 +203,8 @@ class _NearbyCard extends StatefulWidget {
   final String loc;
   final int itemCount;
   final String cstmSgn;
-  const _NearbyCard({required this.loc, required this.itemCount, required this.cstmSgn});
+  final double? distanceKm;
+  const _NearbyCard({required this.loc, required this.itemCount, required this.cstmSgn, this.distanceKm});
 
   @override
   State<_NearbyCard> createState() => _NearbyCardState();
@@ -241,6 +243,22 @@ class _NearbyCardState extends State<_NearbyCard> {
               ],
             ),
             const Spacer(),
+            if (widget.distanceKm != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEEF3FF),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  widget.distanceKm! < 1
+                      ? '${(widget.distanceKm! * 1000).round()}m'
+                      : '${widget.distanceKm!.toStringAsFixed(1)}km',
+                  style: const TextStyle(color: _kPrimary, fontWeight: FontWeight.w700, fontSize: 12),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
             const Icon(Icons.chevron_right, color: Color(0xFFC4C5CB)),
           ],
         ),

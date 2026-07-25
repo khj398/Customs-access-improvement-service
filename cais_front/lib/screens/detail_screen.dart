@@ -39,6 +39,15 @@ class _DetailScreenState extends State<DetailScreen> {
     });
   }
 
+  void _openFullscreen(List<String> images, int initialIndex) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _FullscreenGallery(images: images, initialIndex: initialIndex),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _pageCtrl.dispose();
@@ -74,21 +83,42 @@ class _DetailScreenState extends State<DetailScreen> {
                   Container(color: const Color(0xFFF0F1F5)),
                   // PageView for swiping
                   images.isNotEmpty
-                      ? PageView.builder(
-                          controller: _pageCtrl,
-                          itemCount: images.length,
-                          onPageChanged: (i) => setState(() => _currentPage = i),
-                          itemBuilder: (_, i) => Image.network(
-                            images[i],
-                            fit: BoxFit.contain,
-                            width: double.infinity,
-                            height: double.infinity,
-                            errorBuilder: (_, __, ___) => _detailPlaceholder(),
-                            loadingBuilder: (_, child, progress) =>
-                                progress == null ? child : _detailPlaceholder(),
+                      ? GestureDetector(
+                          onTap: () => _openFullscreen(images, _currentPage),
+                          child: PageView.builder(
+                            controller: _pageCtrl,
+                            itemCount: images.length,
+                            onPageChanged: (i) => setState(() => _currentPage = i),
+                            itemBuilder: (_, i) => Image.network(
+                              images[i],
+                              fit: BoxFit.contain,
+                              width: double.infinity,
+                              height: double.infinity,
+                              errorBuilder: (_, __, ___) => _detailPlaceholder(),
+                              loadingBuilder: (_, child, progress) =>
+                                  progress == null ? child : _detailPlaceholder(),
+                            ),
                           ),
                         )
                       : _detailPlaceholder(),
+                  // Zoom hint icon
+                  if (images.isNotEmpty)
+                    Positioned(
+                      bottom: hasMultiple ? 44 : 12,
+                      right: 12,
+                      child: GestureDetector(
+                        onTap: () => _openFullscreen(images, _currentPage),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.zoom_in, color: Colors.white, size: 18),
+                        ),
+                      ),
+                    ),
                   // Page indicator dots
                   if (hasMultiple)
                     Positioned(
@@ -420,6 +450,142 @@ class _BundledCard extends StatelessWidget {
     );
   }
 }
+
+// ─── 전체화면 갤러리 (InteractiveViewer 핀치줌) ───────────────────────────────
+
+class _FullscreenGallery extends StatefulWidget {
+  final List<String> images;
+  final int initialIndex;
+
+  const _FullscreenGallery({required this.images, required this.initialIndex});
+
+  @override
+  State<_FullscreenGallery> createState() => _FullscreenGalleryState();
+}
+
+class _FullscreenGalleryState extends State<_FullscreenGallery> {
+  late int _current;
+  late PageController _pageCtrl;
+  late List<TransformationController> _transforms;
+  bool _isZoomed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.initialIndex;
+    _pageCtrl = PageController(initialPage: widget.initialIndex);
+    _transforms = List.generate(
+      widget.images.length,
+      (_) => TransformationController(),
+    );
+    for (final t in _transforms) {
+      t.addListener(_onTransformChanged);
+    }
+  }
+
+  void _onTransformChanged() {
+    final scale = _transforms[_current].value.getMaxScaleOnAxis();
+    final zoomed = scale > 1.05;
+    if (zoomed != _isZoomed) setState(() => _isZoomed = zoomed);
+  }
+
+  void _onPageChanged(int index) {
+    // 이전 페이지 줌 초기화
+    _transforms[_current].value = Matrix4.identity();
+    setState(() {
+      _current = index;
+      _isZoomed = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _pageCtrl.dispose();
+    for (final t in _transforms) {
+      t.removeListener(_onTransformChanged);
+      t.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          PageView.builder(
+            controller: _pageCtrl,
+            itemCount: widget.images.length,
+            physics: _isZoomed
+                ? const NeverScrollableScrollPhysics()
+                : const PageScrollPhysics(),
+            onPageChanged: _onPageChanged,
+            itemBuilder: (_, i) => InteractiveViewer(
+              transformationController: _transforms[i],
+              minScale: 1.0,
+              maxScale: 4.0,
+              child: Image.network(
+                widget.images[i],
+                fit: BoxFit.contain,
+                width: double.infinity,
+                height: double.infinity,
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Icon(Icons.broken_image_outlined, color: Colors.white54, size: 64),
+                ),
+                loadingBuilder: (_, child, progress) => progress == null
+                    ? child
+                    : const Center(
+                        child: CircularProgressIndicator(color: Colors.white54, strokeWidth: 2),
+                      ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black.withValues(alpha: 0.5),
+                      ),
+                      child: const Icon(Icons.close, size: 20, color: Colors.white),
+                    ),
+                  ),
+                  if (widget.images.length > 1)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${_current + 1} / ${widget.images.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _LotTable extends StatelessWidget {
   final AuctionItem item;

@@ -91,3 +91,25 @@ exports.checkEmailExists = async (email) => {
   );
   return rows[0].cnt > 0;
 };
+
+exports.getBaseLocation = async (userId) => {
+  const [rows] = await pool.query(
+    `SELECT
+       base_latitude            AS baseLatitude,
+       base_longitude           AS baseLongitude,
+       base_location_label      AS baseLocationLabel,
+       base_location_updated_at AS baseLocationUpdatedAt
+     FROM app_user WHERE user_id = ?`,
+    [userId]
+  );
+  return rows[0];
+};
+
+exports.updateBaseLocation = async (userId, { latitude, longitude, label }) => {
+  await pool.query(
+    `UPDATE app_user
+     SET base_latitude = ?, base_longitude = ?, base_location_label = ?, base_location_updated_at = NOW()
+     WHERE user_id = ?`,
+    [latitude, longitude, label || null, userId]
+  );
+};

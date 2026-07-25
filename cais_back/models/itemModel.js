@@ -199,8 +199,30 @@ exports.findByPbacNo = async (pbacNo) => {
   return rows;
 };
 
-// 세관별 활성 물품 건수 (물품 수 내림차순)
-exports.getCustomsStats = async () => {
+// 세관별 활성 물품 건수
+// userLat/userLng가 주어지면 거리순(가까운 순) 정렬, 없으면 기존처럼 물품 수 내림차순
+exports.getCustomsStats = async (userLat = null, userLng = null) => {
+  if (userLat != null && userLng != null) {
+    const [rows] = await pool.query(`
+      SELECT
+        a.cstm_sgn AS cstmSgn, co.cstm_name AS cstmName, COUNT(ai.cmdt_ln_no) AS itemCount,
+        (
+          6371 * ACOS(LEAST(1, GREATEST(-1,
+            COS(RADIANS(?)) * COS(RADIANS(co.latitude)) * COS(RADIANS(co.longitude) - RADIANS(?))
+            + SIN(RADIANS(?)) * SIN(RADIANS(co.latitude))
+          )))
+        ) AS distanceKm
+      FROM auction a
+      LEFT JOIN customs_office co ON a.cstm_sgn = co.cstm_sgn
+      LEFT JOIN auction_item ai ON a.pbac_no = ai.pbac_no
+      WHERE a.pbac_end_dttm >= NOW()
+      GROUP BY a.cstm_sgn
+      HAVING itemCount > 0
+      ORDER BY (distanceKm IS NULL), distanceKm ASC
+    `, [userLat, userLng, userLat]);
+    return rows;
+  }
+
   const [rows] = await pool.query(`
     SELECT a.cstm_sgn AS cstmSgn, co.cstm_name AS cstmName, COUNT(ai.cmdt_ln_no) AS itemCount
     FROM auction a

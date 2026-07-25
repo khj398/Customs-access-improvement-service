@@ -88,12 +88,13 @@ python project/AWSLambda/UNIPASS_Image.py
 아래 파일을 MySQL Workbench에서 순서대로 실행합니다.
 
 1. `db/schema_create.sql`
-2. `db/schema_patch_v2.sql` (기존 운영 DB 보강 시)
-3. `db/schema_app_user_v1.sql`
-4. `db/seed_category.sql`
-5. `db/seed_category_extend.sql`
-6. `db/seed_synonym.sql`
-7. `db/seed_synonym_extend.sql`
+2. `db/schema_patch_v2.sql` → `db/schema_patch_v3.sql` (기존 운영 DB 보강 시)
+3. `db/schema_app_user_unified_v1.sql` (사용자 도메인 — 채택된 방식, `schema_app_user_v1.sql`은 폐기됨)
+4. `db/schema_patch_v4.sql` (위치 기반 세관 추천 + FCM 알림 확장 — 3번 이후 실행)
+5. `db/seed_category.sql`
+6. `db/seed_category_extend.sql`
+7. `db/seed_synonym.sql`
+8. `db/seed_synonym_extend.sql`
 
 > `Error Code: 1046. No database selected` 발생 시 `customs_auction` 스키마를 먼저 선택하세요.
 
@@ -166,7 +167,11 @@ DB_NAME=customs_auction
 JWT_SECRET=<임의 문자열>
 MEILI_HOST=http://localhost:7700
 MEILI_MASTER_KEY=cais-search-key
+KAKAO_REST_API_KEY=<카카오 개발자 콘솔에서 발급 — 위치 기반 세관 추천용>
+FIREBASE_SERVICE_ACCOUNT_PATH=<FCM 서비스 계정 키 경로 (선택, 기본: cais_back/config/firebase-service-account.json)>
 ```
+
+> 위치/알림 기능 상세는 [`cais_back/README.md`](cais_back/README.md#알림fcm-푸시--jobsnotificationjobjs) 참고.
 
 ---
 
@@ -175,13 +180,12 @@ MEILI_MASTER_KEY=cais-search-key
 ```bash
 cd cais_front
 flutter pub get
-flutter run   # Android 에뮬레이터: 백엔드를 10.0.2.2:3000으로 자동 연결
+flutter run -d emulator-5554   # Android 에뮬레이터: 백엔드를 10.0.2.2:3000으로 자동 연결
 ```
 
-실기기 사용 시:
-```bash
-flutter run --dart-define=API_BASE_URL=http://192.168.x.x:3000
-```
+실기기 사용 시에는 `lib/services/api_config.dart`의 `baseUrl`을 PC의 실제 IP(`http://192.168.x.x:3000`)로 직접 수정해야 합니다.
+
+위치 기반 추천/푸시 알림 기능을 쓰려면 `google-services.json` 배치, 위치 권한 등 추가 설정이 필요합니다 — [`cais_front/README.md`](cais_front/README.md#위치-기반-추천--푸시-알림-설정-android) 참고.
 
 ---
 

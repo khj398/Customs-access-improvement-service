@@ -153,6 +153,9 @@ celerybeat.pid
 # Environments
 .env
 .envrc
+
+# Firebase Admin SDK service account key (secret, never commit)
+cais_back/config/firebase-service-account.json
 .venv
 env/
 venv/

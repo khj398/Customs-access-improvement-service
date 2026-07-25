@@ -25,7 +25,7 @@ class _MainScreenState extends State<MainScreen> {
     _tabWorker = ever(_ctrl.currentTab, (_) {
       if (mounted) setState(() {});
     });
-    _ctrl.loadWishlist();
+    _ctrl.loadWishlist().then((_) => _ctrl.loadCuratedItems());
   }
 
   @override

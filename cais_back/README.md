@@ -39,6 +39,13 @@ DB_NAME=customs_auction
 JWT_SECRET=<임의 문자열>
 MEILI_HOST=http://localhost:7700
 MEILI_MASTER_KEY=cais-search-key
+
+# 위치 기반 세관 추천 (주소 → 좌표 변환)
+KAKAO_REST_API_KEY=<카카오 개발자 콘솔에서 발급>
+
+# FCM 푸시 알림 (선택 — 없으면 서버는 정상 동작하고 발송만 비활성화됨)
+# 기본값: cais_back/config/firebase-service-account.json
+FIREBASE_SERVICE_ACCOUNT_PATH=<서비스 계정 키 JSON 경로>
 ```
 
 ### 3) 서버 실행
@@ -74,6 +81,7 @@ node scripts/sync_meili.js
 | GET | `/api/items/search` | 물품 검색 (keyword·categoryId·cstmSgn·page·limit) |
 | GET | `/api/items/autocomplete` | 자동완성 제안 (q 파라미터) |
 | GET | `/api/items/category-stats` | 카테고리별 물품 건수 |
+| GET | `/api/items/customs-stats` | 세관별 활성 물품 건수. `lat`·`lng` 쿼리를 주거나 로그인 사용자가 기본 위치를 저장해뒀으면 **거리순**, 아니면 물품 수 내림차순 |
 | GET | `/api/items/calendar` | 달력용 월별 마감 물품 목록 (year·month) |
 | GET | `/api/items/:pbacNo/:pbacSrno/:cmdtLnNo` | 물품 상세 조회 |
 
@@ -110,6 +118,22 @@ node scripts/sync_meili.js
 |--------|------|------|
 | GET | `/api/users/me` | 내 정보 조회 |
 | PUT | `/api/users/me` | 내 정보 수정 |
+| PUT | `/api/users/me/location` | 관심 세관(preferredCstmSgn) 설정 |
+| GET | `/api/users/me/base-location` | 내 기본 위치(위경도) 조회 |
+| PUT | `/api/users/me/base-location` | 내 기본 위치 설정 — `{ latitude, longitude, label? }`(GPS, `label` 생략 시 좌표→주소 역지오코딩으로 자동 채움) 또는 `{ address, label? }`(주소→좌표 지오코딩, `label` 생략 시 입력한 주소를 그대로 사용) |
+| POST | `/api/users/me/device-token` | FCM 기기 토큰 등록/갱신 |
+| DELETE | `/api/users/me/device-token` | FCM 기기 토큰 삭제 |
+| GET | `/api/users/me/calendar` | 입찰/낙찰 달력 데이터 |
+
+### 관심 검색어 구독 (`/api/search-subscriptions`)
+당근마켓 스타일 — 등록해둔 키워드에 신규 물품이 매칭되면 푸시 알림 발송 (`jobs/notificationJob.js` 참고)
+
+| 메서드 | 경로 | 설명 |
+|--------|------|------|
+| GET | `/api/search-subscriptions` | 내 구독 키워드 목록 |
+| POST | `/api/search-subscriptions` | 키워드 구독 추가 (`{ keyword }`) |
+| DELETE | `/api/search-subscriptions/:subscriptionId` | 구독 삭제 |
+| PATCH | `/api/search-subscriptions/:subscriptionId` | 알림 on/off (`{ enabled }`) |
 
 ### 파일 (`/api/files`)
 | 메서드 | 경로 | 설명 |
@@ -118,19 +142,37 @@ node scripts/sync_meili.js
 
 ---
 
+## 알림(FCM 푸시) — `jobs/notificationJob.js`
+
+서버 기동 시 `node-cron`으로 **15분마다** 자동 실행됩니다.
+
+1. **경매 시작 임박 알림**: 찜한 물품(`user_watchlist_target.notify_enabled=1`) 중 연결된 공매의 `pbac_strt_dttm`이 임박한 건을 찾아 발송. **24시간 전 / 1시간 전, 2단계**로 각각 한 번씩 보내며(`jobs/notificationJob.js`의 `STARTING_SOON_TIERS`), 같은 찜 항목·같은 단계 재알림은 발송 이력(`message_title` 기준)으로 영구 방지.
+2. **관심 검색어 신규 매칭 알림**: 활성화된 `user_search_subscription` 키워드에 최근 20분 내 등록된 신규 물품이 매칭되면 요약 푸시 발송.
+
+발송 이력은 `user_notification_event`(PENDING/SENT/FAILED)에 기록됩니다.
+`cais_back/config/firebase-service-account.json`이 없으면 cron은 정상 등록되지만 발송 단계에서 스킵되고 경고 로그만 남습니다(서버는 정상 동작).
+
+---
+
 ## 디렉터리 구조
 
 ```
 cais_back/
-├─ server.js              # 서버 진입점 (포트 바인딩)
+├─ server.js              # 서버 진입점 (포트 바인딩 + 알림 cron 시작)
 ├─ app.js                 # Express 앱 설정 및 라우팅 연결
 ├─ config/
 │   ├─ db.js              # MySQL 커넥션 풀 싱글톤
-│   └─ meili.js           # Meilisearch 클라이언트 싱글톤
+│   ├─ meili.js           # Meilisearch 클라이언트 싱글톤
+│   └─ firebase-service-account.json  # FCM 서비스 계정 키 (gitignore, 직접 발급 필요)
 ├─ routes/                # 라우트 정의
 ├─ controllers/           # 요청 처리 로직
 ├─ models/                # DB 쿼리 / Meilisearch 검색 로직
 │   └─ meiliModel.js      # Meilisearch 검색 + 자동완성
+├─ services/
+│   ├─ geocodeService.js  # 카카오 주소↔좌표 변환 (geocodeAddress: 주소→좌표, reverseGeocodeAddress: 좌표→주소)
+│   └─ fcmService.js      # FCM 푸시 발송 (firebase-admin, 모듈형 API 사용)
+├─ jobs/
+│   └─ notificationJob.js # 알림 cron (경매 임박 / 관심 검색어 매칭)
 ├─ middleware/
 │   └─ optionalAuth.js    # JWT 선택적 인증 미들웨어
 ├─ scripts/

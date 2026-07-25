@@ -112,15 +112,116 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchCustomsStats() async {
-    final uri = Uri.parse('$_base/api/items/customs-stats');
+  Future<List<Map<String, dynamic>>> fetchCustomsStats({double? lat, double? lng}) async {
+    final params = <String, String>{
+      if (lat != null) 'lat': '$lat',
+      if (lng != null) 'lng': '$lng',
+    };
+    final uri = Uri.parse('$_base/api/items/customs-stats').replace(queryParameters: params.isEmpty ? null : params);
     try {
-      final res = await http.get(uri).timeout(_timeout);
+      final res = await http.get(uri, headers: _authHeaders()).timeout(_timeout);
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       return List<Map<String, dynamic>>.from(body['customs'] as List? ?? []);
     } catch (_) {
       return [];
     }
+  }
+
+  Future<Map<String, dynamic>?> fetchBaseLocation() async {
+    if (!isLoggedIn) return null;
+    try {
+      final res = await http.get(
+        Uri.parse('$_base/api/users/me/base-location'),
+        headers: _authHeaders(),
+      ).timeout(_timeout);
+      if (res.statusCode != 200) return null;
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      return body['location'] as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> updateBaseLocationGps(double latitude, double longitude, {String? label}) async {
+    final res = await http.put(
+      Uri.parse('$_base/api/users/me/base-location'),
+      headers: _authHeaders(),
+      body: jsonEncode({'latitude': latitude, 'longitude': longitude, if (label != null) 'label': label}),
+    ).timeout(_timeout);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) throw ApiException(body['error'] ?? '위치 저장에 실패했습니다', statusCode: res.statusCode);
+    return body['location'] as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateBaseLocationAddress(String address, {String? label}) async {
+    final res = await http.put(
+      Uri.parse('$_base/api/users/me/base-location'),
+      headers: _authHeaders(),
+      body: jsonEncode({'address': address, if (label != null) 'label': label}),
+    ).timeout(_timeout);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode != 200) throw ApiException(body['error'] ?? '주소를 찾을 수 없습니다', statusCode: res.statusCode);
+    return body['location'] as Map<String, dynamic>;
+  }
+
+  Future<void> registerDeviceToken(String fcmToken, {String platform = 'ANDROID'}) async {
+    if (!isLoggedIn) return;
+    await http.post(
+      Uri.parse('$_base/api/users/me/device-token'),
+      headers: _authHeaders(),
+      body: jsonEncode({'fcmToken': fcmToken, 'platform': platform}),
+    ).timeout(_timeout);
+  }
+
+  Future<void> removeDeviceToken(String fcmToken) async {
+    if (!isLoggedIn) return;
+    await http.delete(
+      Uri.parse('$_base/api/users/me/device-token'),
+      headers: _authHeaders(),
+      body: jsonEncode({'fcmToken': fcmToken}),
+    ).timeout(_timeout);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchSearchSubscriptions() async {
+    if (!isLoggedIn) return [];
+    try {
+      final res = await http.get(
+        Uri.parse('$_base/api/search-subscriptions'),
+        headers: _authHeaders(),
+      ).timeout(_timeout);
+      if (res.statusCode != 200) return [];
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      return List<Map<String, dynamic>>.from(body['subscriptions'] as List? ?? []);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> addSearchSubscription(String keyword) async {
+    final res = await http.post(
+      Uri.parse('$_base/api/search-subscriptions'),
+      headers: _authHeaders(),
+      body: jsonEncode({'keyword': keyword}),
+    ).timeout(_timeout);
+    if (res.statusCode != 200) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      throw ApiException(body['error'] ?? '구독 등록에 실패했습니다', statusCode: res.statusCode);
+    }
+  }
+
+  Future<void> removeSearchSubscription(int subscriptionId) async {
+    await http.delete(
+      Uri.parse('$_base/api/search-subscriptions/$subscriptionId'),
+      headers: _authHeaders(),
+    ).timeout(_timeout);
+  }
+
+  Future<void> toggleSearchSubscription(int subscriptionId, bool enabled) async {
+    await http.patch(
+      Uri.parse('$_base/api/search-subscriptions/$subscriptionId'),
+      headers: _authHeaders(),
+      body: jsonEncode({'enabled': enabled}),
+    ).timeout(_timeout);
   }
 
   Future<Map<int, int>> fetchCategoryStats() async {
@@ -152,6 +253,22 @@ class ApiService {
       final res = await http.get(uri).timeout(_timeout);
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       return List<Map<String, dynamic>>.from(body['categories'] as List? ?? []);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<AuctionItem>> fetchMyLikeItems() async {
+    if (!isLoggedIn) return [];
+    try {
+      final res = await http.get(
+        Uri.parse('$_base/api/likes/my'),
+        headers: _authHeaders(),
+      ).timeout(_timeout);
+      if (res.statusCode != 200) return [];
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final likes = data['likes'] as List? ?? [];
+      return likes.map((e) => AuctionItem.fromJson(e as Map<String, dynamic>)).toList();
     } catch (_) {
       return [];
     }

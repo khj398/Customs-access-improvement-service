@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import '../models/item.dart';
 import '../services/api_service.dart';
 import '../services/api_config.dart';
+import '../services/local_notification_service.dart';
 
 class AppController extends GetxController {
   final _api = ApiService();
@@ -20,6 +24,17 @@ class AppController extends GetxController {
   final hasMore = true.obs;
 
   final wishlistIds = <String>[].obs;
+  final wishlistItems = <AuctionItem>[].obs;
+
+  // 위치 기반 세관 추천
+  final baseLocation = Rxn<Map<String, dynamic>>();
+
+  // 알림 on/off (기기 토큰 등록 여부로 반영)
+  static const _kNotifyPref = 'notify_enabled';
+  final notificationsEnabled = true.obs;
+
+  // 관심 검색어 구독
+  final searchSubscriptions = <Map<String, dynamic>>[].obs;
 
   // 카테고리 드릴다운 상태
   final l1Categories = <Map<String, dynamic>>[].obs;
@@ -56,19 +71,150 @@ class AppController extends GetxController {
     loadRootCategories();
     loadCategoryStats();
     _initData();
-    loadWishlist();
+    FirebaseMessaging.onMessage.listen((msg) {
+      final title = msg.notification?.title ?? '알림';
+      final body = msg.notification?.body ?? '';
+      // foreground에서는 FCM이 시스템 알림을 자동으로 안 띄우므로 직접 띄워서
+      // 알림창에 남도록 함 (background/killed 상태와 동일한 사용자 경험)
+      LocalNotificationService.show(title, body);
+    });
   }
 
   Future<void> _initData() async {
     await loadItems();
+    await loadWishlist();
     loadCuratedItems();
     loadNearbyCustoms();
+
+    notificationsEnabled.value = GetStorage().read<bool>(_kNotifyPref) ?? true;
+    if (ApiService.isLoggedIn) {
+      loadBaseLocation();
+      loadSearchSubscriptions();
+      registerPushToken();
+    }
+  }
+
+  Future<void> loadBaseLocation() async {
+    baseLocation.value = await _api.fetchBaseLocation();
+  }
+
+  Future<void> setLocationFromGps({String? label}) async {
+    try {
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        _toast('위치 권한이 필요합니다');
+        return;
+      }
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        _toast('기기의 위치 서비스를 켜주세요');
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition();
+      final loc = await _api.updateBaseLocationGps(pos.latitude, pos.longitude, label: label);
+      baseLocation.value = loc;
+      _toast('현재 위치로 설정되었습니다');
+      loadNearbyCustoms();
+    } catch (_) {
+      _toast('위치를 가져오지 못했습니다');
+    }
+  }
+
+  Future<void> setLocationFromAddress(String address, {String? label}) async {
+    try {
+      final loc = await _api.updateBaseLocationAddress(address, label: label ?? address);
+      baseLocation.value = loc;
+      _toast('위치가 저장되었습니다');
+      loadNearbyCustoms();
+    } on ApiException catch (e) {
+      _toast(e.message);
+    } catch (_) {
+      _toast('위치 저장에 실패했습니다');
+    }
+  }
+
+  Future<void> registerPushToken() async {
+    if (!ApiService.isLoggedIn || !notificationsEnabled.value) return;
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null) await _api.registerDeviceToken(token);
+    } catch (_) {}
+  }
+
+  Future<void> toggleNotifications(bool value) async {
+    notificationsEnabled.value = value;
+    GetStorage().write(_kNotifyPref, value);
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null) return;
+      if (value) {
+        await _api.registerDeviceToken(token);
+        _toast('알림이 켜졌습니다');
+      } else {
+        await _api.removeDeviceToken(token);
+        _toast('알림이 꺼졌습니다');
+      }
+    } catch (_) {}
+  }
+
+  Future<void> loadSearchSubscriptions() async {
+    final list = await _api.fetchSearchSubscriptions();
+    searchSubscriptions.assignAll(list);
+    loadCuratedItems();
+  }
+
+  bool isSubscribedKeyword(String keyword) => subscriptionFor(keyword) != null;
+
+  Map<String, dynamic>? subscriptionFor(String keyword) {
+    final k = keyword.trim().toLowerCase();
+    for (final s in searchSubscriptions) {
+      if ((s['keyword'] as String).trim().toLowerCase() == k) return s;
+    }
+    return null;
+  }
+
+  Future<void> subscribeToSearch(String keyword) async {
+    if (keyword.trim().isEmpty) return;
+    try {
+      await _api.addSearchSubscription(keyword.trim());
+      _toast('"$keyword" 신규 물품 알림을 구독했습니다');
+      await loadSearchSubscriptions();
+    } catch (_) {
+      _toast('구독에 실패했습니다');
+    }
+  }
+
+  Future<void> removeSearchSubscription(int subscriptionId) async {
+    try {
+      await _api.removeSearchSubscription(subscriptionId);
+      searchSubscriptions.removeWhere((s) => s['subscriptionId'] == subscriptionId);
+      _toast('구독을 삭제했습니다');
+      loadCuratedItems();
+    } catch (_) {
+      _toast('삭제에 실패했습니다');
+    }
+  }
+
+  Future<void> toggleSearchSubscription(int subscriptionId, bool enabled) async {
+    try {
+      await _api.toggleSearchSubscription(subscriptionId, enabled);
+      final idx = searchSubscriptions.indexWhere((s) => s['subscriptionId'] == subscriptionId);
+      if (idx != -1) {
+        searchSubscriptions[idx] = {...searchSubscriptions[idx], 'notifyEnabled': enabled ? 1 : 0};
+        searchSubscriptions.refresh();
+        loadCuratedItems();
+      }
+    } catch (_) {}
   }
 
   Future<void> loadWishlist() async {
     try {
       final keys = await _api.fetchMyLikeKeys();
       wishlistIds.assignAll(keys);
+      final items = await _api.fetchMyLikeItems();
+      wishlistItems.assignAll(items);
     } catch (_) {}
   }
 
@@ -154,52 +300,51 @@ class AppController extends GetxController {
     } catch (_) {}
   }
 
+  // 관심 검색어(구독 키워드) 기반 추천 — 키워드가 없으면 진행 중 전체로 fallback
   Future<void> loadCuratedItems() async {
-    // 찜한 상품의 cat 집합
-    final wishedCats = allItems
-        .where((i) => wishlistIds.contains(i.likeKey))
-        .map((i) => i.cat)
-        .toSet();
+    final keywords = searchSubscriptions
+        .where((s) => (s['notifyEnabled'] as num?)?.toInt() != 0)
+        .map((s) => (s['keyword'] as String).trim())
+        .where((k) => k.isNotEmpty)
+        .toSet()
+        .toList();
 
-    // 최근 카테고리 ID로 추가 fetch
+    if (keywords.isEmpty) {
+      curatedItems.assignAll(allItems.where((i) => i.status == '진행중').toList());
+      return;
+    }
+
+    // 키워드별로 매칭 물품 fetch
     final extra = <AuctionItem>[];
-    if (recentCategoryIds.isNotEmpty) {
+    for (final kw in keywords) {
       try {
-        final fetched = await _api.fetchItems(
-          categoryId: recentCategoryIds.first,
-          page: 1,
-          limit: ApiConfig.defaultPageSize,
-        );
+        final fetched = await _api.fetchItems(keyword: kw, page: 1, limit: ApiConfig.defaultPageSize);
         extra.addAll(fetched);
       } catch (_) {}
     }
 
-    // 후보 풀: allItems + 추가 fetch (중복 제거)
+    // 후보 풀: 키워드 매칭 결과 + allItems (중복 제거)
     final seen = <String>{};
     final pool = <AuctionItem>[];
-    for (final item in [...allItems, ...extra]) {
+    for (final item in [...extra, ...allItems]) {
       if (seen.add(item.likeKey)) pool.add(item);
     }
 
-    // 정렬: 찜 카테고리 매칭 > 최근 검색 카테고리 매칭 > 나머지
-    pool.sort((a, b) {
-      int scoreOf(AuctionItem i) {
-        if (wishedCats.contains(i.cat)) return 0;
-        if (recentCategoryIds.isNotEmpty) {
-          // extra에 포함된 아이템은 최근 카테고리 기반
-          if (extra.any((e) => e.likeKey == i.likeKey)) return 1;
-        }
-        return 2;
-      }
-      return scoreOf(a).compareTo(scoreOf(b));
-    });
-
-    // 찜 카테고리도 없고 최근 검색도 없으면 진행 중 전체 fallback
-    if (wishedCats.isEmpty && recentCategoryIds.isEmpty) {
-      curatedItems.assignAll(allItems.where((i) => i.status == '진행중').toList());
-    } else {
-      curatedItems.assignAll(pool);
+    int matchCount(AuctionItem i) {
+      final name = i.name.toLowerCase();
+      return keywords.where((k) => name.contains(k.toLowerCase())).length;
     }
+
+    // 매칭 키워드 많은 순으로 정렬, 매칭된 것만 채택
+    pool.sort((a, b) => matchCount(b).compareTo(matchCount(a)));
+    final matched = pool.where((i) => matchCount(i) > 0).toList();
+
+    // 매칭 결과가 너무 적으면 진행 중 물품으로 채워서 빈 화면 방지
+    if (matched.length < 4) {
+      final filler = pool.where((i) => matchCount(i) == 0 && i.status == '진행중');
+      matched.addAll(filler);
+    }
+    curatedItems.assignAll(matched);
   }
 
   Future<void> loadMore() async {
@@ -332,19 +477,22 @@ class AppController extends GetxController {
     // 즉시 UI 반영 (낙관적 업데이트)
     if (wasWished) {
       wishlistIds.remove(key);
+      wishlistItems.removeWhere((i) => i.likeKey == key);
     } else {
       wishlistIds.add(key);
+      wishlistItems.add(item);
     }
     try {
       await _api.toggleLike(item.pbacNoStr, item.pbacSrno, item.cmdtLnNo);
       _toast(wasWished ? '찜 목록에서 제거되었습니다' : '찜 목록에 추가되었습니다 ♥');
-      loadCuratedItems();
     } catch (e) {
       // 실패 시 롤백
       if (wasWished) {
         wishlistIds.add(key);
+        wishlistItems.add(item);
       } else {
         wishlistIds.remove(key);
+        wishlistItems.removeWhere((i) => i.likeKey == key);
       }
       _toast('찜 처리에 실패했습니다');
     }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "401641388832",
+    "project_id": "cais-app-ed3ec",
+    "storage_bucket": "cais-app-ed3ec.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:401641388832:android:87b2d6aa139a4abee67545",
+        "android_client_info": {
+          "package_name": "com.example.cais_front"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAknffzj5pIlcAPcUIoSiNwCo1RZkRiqCU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

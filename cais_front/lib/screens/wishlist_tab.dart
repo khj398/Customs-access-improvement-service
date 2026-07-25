@@ -36,9 +36,7 @@ class WishlistTab extends StatelessWidget {
             const SizedBox(height: 16),
             Expanded(
               child: Obx(() {
-                ctrl.allItems.length; // wishedItems는 computed getter → 명시적 reactive 등록 필요
-                ctrl.wishlistIds.length;
-                final wished = ctrl.wishedItems;
+                final wished = ctrl.wishlistItems;
                 if (wished.isEmpty) {
                   return const Center(
                     child: Column(
