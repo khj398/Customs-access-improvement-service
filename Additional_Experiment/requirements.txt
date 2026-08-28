@@ -1,0 +1,7 @@
+# Additional_Experiment 실험 스크립트 의존성
+# 설치: python -m pip install -r Additional_Experiment/requirements.txt
+pymysql>=1.1.0
+requests>=2.31.0
+PyYAML>=6.0
+# E7 · E13 (LLM 관련 실험)에서만 필요
+openai>=1.0.0

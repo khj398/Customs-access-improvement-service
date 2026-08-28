@@ -1,0 +1,37 @@
+{
+  "_comment": "S108 졸업논문 실험계획서 v1.0 부록 A. 질의셋 (E3/E8/E10 공용, E4 오타쌍)",
+  "version": "1.0",
+  "korean_queries": [
+    {"no": 1,  "query": "와인",     "expected_en": "WINE"},
+    {"no": 2,  "query": "배터리",   "expected_en": "BATTERY / LITHIUM"},
+    {"no": 3,  "query": "화장품",   "expected_en": "COSMETIC / SKIN CARE"},
+    {"no": 4,  "query": "셔츠",     "expected_en": "SHIRT"},
+    {"no": 5,  "query": "신발",     "expected_en": "SHOE / SNEAKER"},
+    {"no": 6,  "query": "가방",     "expected_en": "BAG"},
+    {"no": 7,  "query": "냉장고",   "expected_en": "REFRIGERATOR"},
+    {"no": 8,  "query": "완구",     "expected_en": "TOY / ERASER"},
+    {"no": 9,  "query": "접시",     "expected_en": "PLATE"},
+    {"no": 10, "query": "향수",     "expected_en": "PERFUME"},
+    {"no": 11, "query": "펌프",     "expected_en": "PUMP"},
+    {"no": 12, "query": "케이블",   "expected_en": "CABLE / CONNECTOR"},
+    {"no": 13, "query": "타이어",   "expected_en": "TIRE / TYRE"},
+    {"no": 14, "query": "헤드폰",   "expected_en": "HEADPHONE / EARPHONE"},
+    {"no": 15, "query": "캔들",     "expected_en": "CANDLE"},
+    {"no": 16, "query": "주류",     "expected_en": "WINE / WHISKY"},
+    {"no": 17, "query": "식기",     "expected_en": "PLATE / BOWL / MUG"},
+    {"no": 18, "query": "인형",     "expected_en": "DOLL / PLUSH"},
+    {"no": 19, "query": "선글라스", "expected_en": "SUNGLASSES"},
+    {"no": 20, "query": "러닝머신", "expected_en": "TREADMILL"}
+  ],
+  "typo_pairs": [
+    {"no": 1, "normal": "배터리",   "typo": "배터러",   "note": "3자 - Meilisearch 오타 보정 미적용 구간(경계 사례)"},
+    {"no": 2, "normal": "화장품",   "typo": "화장퓸",   "note": "3자 - 경계 사례"},
+    {"no": 3, "normal": "냉장고",   "typo": "냉장코",   "note": "3자 - 경계 사례"},
+    {"no": 4, "normal": "러닝머신", "typo": "러닝머진", "note": "4자 - 1회 오타 허용 구간"},
+    {"no": 5, "normal": "선글라스", "typo": "선글라수", "note": "4자 - 1회 오타 허용 구간"}
+  ],
+  "typo_tolerance_setting": {
+    "source": "cais_back/scripts/sync_meili.js updateTypoTolerance",
+    "minWordSizeForTypos": {"oneTypo": 4, "twoTypos": 8}
+  }
+}

@@ -1,0 +1,367 @@
+{
+  "exp_id": "OFFLINE",
+  "title": "오프라인 사전 분석 (DB 미기동 환경)",
+  "paper_ref": "E01 / E03(A) / E07 / E08 예비 수치",
+  "executed_at": "2026-08-28 13:02:54",
+  "run_id": "20260828",
+  "input": {
+    "raw_rows": 507,
+    "items": 497,
+    "duplicates": 10,
+    "rules": 85,
+    "synonym_entries": 278
+  },
+  "dataset": {
+    "auctions": 483,
+    "items": 497,
+    "customs_offices": 4,
+    "ko_included": 399,
+    "en_only": 98,
+    "en_only_ratio": 19.7,
+    "avg_len": 43.0,
+    "max_len": 188,
+    "price_min": 3270,
+    "price_max": 4631905590,
+    "avg_lines_per_auction": 1.03,
+    "by_source": {
+      "BUSINESS": {
+        "items": 107,
+        "ko_included": 19
+      },
+      "PERSONAL": {
+        "items": 390,
+        "ko_included": 380
+      }
+    },
+    "period": {
+      "first_start": "20260825100000",
+      "last_end": "20260827130000"
+    }
+  },
+  "rule_coverage": {
+    "items": 497,
+    "matched": 259,
+    "coverage_pct": 52.1,
+    "by_source": {
+      "BUSINESS": {
+        "items": 107,
+        "matched": 30
+      },
+      "PERSONAL": {
+        "items": 390,
+        "matched": 229
+      }
+    }
+  },
+  "query_analysis": {
+    "queries": 20,
+    "like_zero": 12,
+    "stage_zero": {
+      "RAW": 20,
+      "RAW+SYN": 15,
+      "RAW+SYN+CATEGORY": 11
+    },
+    "stage_total": {
+      "RAW": 0,
+      "RAW+SYN": 15,
+      "RAW+SYN+CATEGORY": 266
+    },
+    "rows": [
+      {
+        "no": 1,
+        "query": "와인",
+        "like": "0",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 0
+      },
+      {
+        "no": 2,
+        "query": "배터리",
+        "like": "0",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 0
+      },
+      {
+        "no": 3,
+        "query": "화장품",
+        "like": "165",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 186
+      },
+      {
+        "no": 4,
+        "query": "셔츠",
+        "like": "2",
+        "raw": 0,
+        "raw_syn": 5,
+        "raw_syn_cat": 5
+      },
+      {
+        "no": 5,
+        "query": "신발",
+        "like": "4",
+        "raw": 0,
+        "raw_syn": 4,
+        "raw_syn_cat": 4
+      },
+      {
+        "no": 6,
+        "query": "가방",
+        "like": "10",
+        "raw": 0,
+        "raw_syn": 2,
+        "raw_syn_cat": 3
+      },
+      {
+        "no": 7,
+        "query": "냉장고",
+        "like": "0",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 0
+      },
+      {
+        "no": 8,
+        "query": "완구",
+        "like": "8",
+        "raw": 0,
+        "raw_syn": 1,
+        "raw_syn_cat": 11
+      },
+      {
+        "no": 9,
+        "query": "접시",
+        "like": "0",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 0
+      },
+      {
+        "no": 10,
+        "query": "향수",
+        "like": "44",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 50
+      },
+      {
+        "no": 11,
+        "query": "펌프",
+        "like": "0",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 0
+      },
+      {
+        "no": 12,
+        "query": "케이블",
+        "like": "0",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 0
+      },
+      {
+        "no": 13,
+        "query": "타이어",
+        "like": "0",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 0
+      },
+      {
+        "no": 14,
+        "query": "헤드폰",
+        "like": "0",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 0
+      },
+      {
+        "no": 15,
+        "query": "캔들",
+        "like": "0",
+        "raw": 0,
+        "raw_syn": 3,
+        "raw_syn_cat": 3
+      },
+      {
+        "no": 16,
+        "query": "주류",
+        "like": "0",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 3
+      },
+      {
+        "no": 17,
+        "query": "식기",
+        "like": "0",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 0
+      },
+      {
+        "no": 18,
+        "query": "인형",
+        "like": "1",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 0
+      },
+      {
+        "no": 19,
+        "query": "선글라스",
+        "like": "13",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 1
+      },
+      {
+        "no": 20,
+        "query": "러닝머신",
+        "like": "0",
+        "raw": 0,
+        "raw_syn": 0,
+        "raw_syn_cat": 0
+      }
+    ]
+  },
+  "english_only_subset": {
+    "items": 98,
+    "like_zero": 20,
+    "token_zero": 12,
+    "rescued_queries": 8
+  },
+  "query_candidates": {
+    "evaluated": 40,
+    "like_zero_but_token_hit": 28,
+    "top": [
+      {
+        "term": "뷰티·위생",
+        "like": 0,
+        "token": 190
+      },
+      {
+        "term": "스킨케어",
+        "like": 0,
+        "token": 93
+      },
+      {
+        "term": "증강현실",
+        "like": 0,
+        "token": 51
+      },
+      {
+        "term": "스마트글라스",
+        "like": 0,
+        "token": 51
+      },
+      {
+        "term": "색조화장",
+        "like": 0,
+        "token": 43
+      },
+      {
+        "term": "의류·패션잡화",
+        "like": 0,
+        "token": 30
+      },
+      {
+        "term": "상의·하의",
+        "like": 0,
+        "token": 20
+      },
+      {
+        "term": "스포츠·레저",
+        "like": 0,
+        "token": 12
+      },
+      {
+        "term": "취미·악기",
+        "like": 0,
+        "token": 12
+      },
+      {
+        "term": "자동차",
+        "like": 0,
+        "token": 8
+      },
+      {
+        "term": "전자·전기",
+        "like": 0,
+        "token": 8
+      },
+      {
+        "term": "컴퓨터·모바일",
+        "like": 0,
+        "token": 6
+      },
+      {
+        "term": "PCB·모듈",
+        "like": 0,
+        "token": 6
+      },
+      {
+        "term": "전자부품",
+        "like": 0,
+        "token": 6
+      },
+      {
+        "term": "목걸이·귀걸이·반지",
+        "like": 0,
+        "token": 6
+      },
+      {
+        "term": "주얼리·액세서리",
+        "like": 0,
+        "token": 6
+      },
+      {
+        "term": "모바일",
+        "like": 0,
+        "token": 5
+      },
+      {
+        "term": "에어컨",
+        "like": 0,
+        "token": 5
+      },
+      {
+        "term": "식품·음료",
+        "like": 0,
+        "token": 4
+      },
+      {
+        "term": "가전",
+        "like": 0,
+        "token": 4
+      }
+    ]
+  },
+  "synonym_false_positive": {
+    "short_entries": 7,
+    "affected_items": 54,
+    "affected_ratio": 10.9,
+    "top": [
+      {
+        "entry": "AR → 증강현실",
+        "count": 51
+      },
+      {
+        "entry": "AR → 스마트글라스",
+        "count": 51
+      },
+      {
+        "entry": "PC → PC",
+        "count": 2
+      },
+      {
+        "entry": "JU → 주",
+        "count": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+﻿no,query,expected_en,like_count,raw,raw_syn,raw_syn_category
+1,와인,WINE,0,0,0,0
+2,배터리,BATTERY / LITHIUM,0,0,0,0
+3,화장품,COSMETIC / SKIN CARE,165,0,0,186
+4,셔츠,SHIRT,2,0,5,5
+5,신발,SHOE / SNEAKER,4,0,4,4
+6,가방,BAG,10,0,2,3
+7,냉장고,REFRIGERATOR,0,0,0,0
+8,완구,TOY / ERASER,8,0,1,11
+9,접시,PLATE,0,0,0,0
+10,향수,PERFUME,44,0,0,50
+11,펌프,PUMP,0,0,0,0
+12,케이블,CABLE / CONNECTOR,0,0,0,0
+13,타이어,TIRE / TYRE,0,0,0,0
+14,헤드폰,HEADPHONE / EARPHONE,0,0,0,0
+15,캔들,CANDLE,0,0,3,3
+16,주류,WINE / WHISKY,0,0,0,3
+17,식기,PLATE / BOWL / MUG,0,0,0,0
+18,인형,DOLL / PLUSH,1,0,0,0
+19,선글라스,SUNGLASSES,13,0,0,1
+20,러닝머신,TREADMILL,0,0,0,0
