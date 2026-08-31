@@ -1,0 +1,255 @@
+{
+  "exp_id": "E03c",
+  "title": "영문 전용 모집단 0건 질의 및 질의당 반환 건수 (신규 측정)",
+  "paper_ref": "4.3절 표 5 2·3행",
+  "executed_at": "2026-08-31 17:48:07",
+  "run_id": "20260831",
+  "en_only_population": 243,
+  "a_zero_all": 7,
+  "b_zero_all": 0,
+  "a_zero_en_only": 20,
+  "b_zero_en_only": 8,
+  "b_errors": 0,
+  "rows": [
+    {
+      "query": "와인",
+      "population": "all",
+      "baseline_count": 1,
+      "proposed_count": 644
+    },
+    {
+      "query": "와인",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 159
+    },
+    {
+      "query": "배터리",
+      "population": "all",
+      "baseline_count": 1,
+      "proposed_count": 5
+    },
+    {
+      "query": "배터리",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 1
+    },
+    {
+      "query": "화장품",
+      "population": "all",
+      "baseline_count": 204,
+      "proposed_count": 344
+    },
+    {
+      "query": "화장품",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 8
+    },
+    {
+      "query": "셔츠",
+      "population": "all",
+      "baseline_count": 3,
+      "proposed_count": 69
+    },
+    {
+      "query": "셔츠",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 0
+    },
+    {
+      "query": "신발",
+      "population": "all",
+      "baseline_count": 5,
+      "proposed_count": 135
+    },
+    {
+      "query": "신발",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 0
+    },
+    {
+      "query": "가방",
+      "population": "all",
+      "baseline_count": 17,
+      "proposed_count": 41
+    },
+    {
+      "query": "가방",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 10
+    },
+    {
+      "query": "냉장고",
+      "population": "all",
+      "baseline_count": 0,
+      "proposed_count": 1
+    },
+    {
+      "query": "냉장고",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 1
+    },
+    {
+      "query": "완구",
+      "population": "all",
+      "baseline_count": 8,
+      "proposed_count": 33
+    },
+    {
+      "query": "완구",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 3
+    },
+    {
+      "query": "접시",
+      "population": "all",
+      "baseline_count": 0,
+      "proposed_count": 177
+    },
+    {
+      "query": "접시",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 24
+    },
+    {
+      "query": "향수",
+      "population": "all",
+      "baseline_count": 56,
+      "proposed_count": 71
+    },
+    {
+      "query": "향수",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 1
+    },
+    {
+      "query": "펌프",
+      "population": "all",
+      "baseline_count": 0,
+      "proposed_count": 21
+    },
+    {
+      "query": "펌프",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 0
+    },
+    {
+      "query": "케이블",
+      "population": "all",
+      "baseline_count": 2,
+      "proposed_count": 5
+    },
+    {
+      "query": "케이블",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 0
+    },
+    {
+      "query": "타이어",
+      "population": "all",
+      "baseline_count": 0,
+      "proposed_count": 7
+    },
+    {
+      "query": "타이어",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 0
+    },
+    {
+      "query": "헤드폰",
+      "population": "all",
+      "baseline_count": 1,
+      "proposed_count": 1
+    },
+    {
+      "query": "헤드폰",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 0
+    },
+    {
+      "query": "캔들",
+      "population": "all",
+      "baseline_count": 2,
+      "proposed_count": 66
+    },
+    {
+      "query": "캔들",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 0
+    },
+    {
+      "query": "주류",
+      "population": "all",
+      "baseline_count": 0,
+      "proposed_count": 142
+    },
+    {
+      "query": "주류",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 78
+    },
+    {
+      "query": "식기",
+      "population": "all",
+      "baseline_count": 0,
+      "proposed_count": 123
+    },
+    {
+      "query": "식기",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 72
+    },
+    {
+      "query": "인형",
+      "population": "all",
+      "baseline_count": 2,
+      "proposed_count": 19
+    },
+    {
+      "query": "인형",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 1
+    },
+    {
+      "query": "선글라스",
+      "population": "all",
+      "baseline_count": 15,
+      "proposed_count": 16
+    },
+    {
+      "query": "선글라스",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 1
+    },
+    {
+      "query": "러닝머신",
+      "population": "all",
+      "baseline_count": 0,
+      "proposed_count": 13
+    },
+    {
+      "query": "러닝머신",
+      "population": "en_only",
+      "baseline_count": 0,
+      "proposed_count": 0
+    }
+  ]
+}
