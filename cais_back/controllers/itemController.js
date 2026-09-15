@@ -87,8 +87,8 @@ exports.searchItems = async (req, res) => {
 
 exports.autocomplete = async (req, res) => {
   try {
-    const { q } = req.query;
-    const suggestions = await meiliModel.autocomplete(q);
+    const { q, categoryId } = req.query;
+    const suggestions = await meiliModel.autocomplete(q, categoryId);
     res.json({ suggestions });
   } catch (err) {
     console.error(err);

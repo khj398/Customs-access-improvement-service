@@ -20,7 +20,8 @@ exports.search = async ({ keyword, categoryId, cstmSgn, page = 1, limit = 20, us
   const joinParams = userId ? [userId] : [];
 
   // ── WHERE 조건 ───────────────────────────────────────────────
-  let where = 'WHERE 1=1';
+  // 공매기간이 끝난 물품은 학습데이터로 DB에는 남기되, 앱 목록/검색에는 노출하지 않는다.
+  let where = 'WHERE a.pbac_end_dttm >= NOW()';
   const whereParams = [];
 
   if (keyword) {

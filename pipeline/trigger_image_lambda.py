@@ -64,6 +64,23 @@ def fetch_items(conn) -> list[dict]:
         return cur.fetchall()
 
 
+def fetch_pending_pbac_nos(conn) -> list[str]:
+    """auction_item_image에 아직 이미지가 없는 공매번호만 조회 (Lambda 호출 대상)
+
+    Lambda는 넘겨받은 대상마다 S3 조회로 중복 체크를 하므로, 이미 수집이
+    끝난 공매번호까지 매번 넘기면 목록이 쌓일수록 중복 체크에 걸리는 시간이
+    길어진다. DB에서 미수집 건만 미리 걸러 보내면 이를 피할 수 있다.
+    """
+    with conn.cursor() as cur:
+        cur.execute("""
+            SELECT DISTINCT ai.pbac_no
+            FROM auction_item ai
+            LEFT JOIN auction_item_image aii ON aii.pbac_no = ai.pbac_no
+            WHERE aii.pbac_no IS NULL
+        """)
+        return [row["pbac_no"] for row in cur.fetchall()]
+
+
 def to_s3_key(pbac_no: str) -> str:
     """DB 공매번호(14자, 대시 없음) → S3 경로 키(대시 포함) 변환
     예: '03026029000022' → '030-26-02-900002-2'
@@ -139,11 +156,14 @@ def main():
         conn.close()
         return
 
-    pbac_nos = list({item["pbac_no"] for item in items})
-    trigger_lambda(pbac_nos)
+    pending_pbac_nos = fetch_pending_pbac_nos(conn)
 
-    print(f"\n⏳ Lambda 처리 대기 중... ({WAIT_SECONDS}초)")
-    time.sleep(WAIT_SECONDS)
+    if pending_pbac_nos:
+        trigger_lambda(pending_pbac_nos)
+        print(f"\n⏳ Lambda 처리 대기 중... ({WAIT_SECONDS}초)")
+        time.sleep(WAIT_SECONDS)
+    else:
+        print("\n✅ 모든 공매번호에 이미지가 이미 수집되어 있어 Lambda 호출을 건너뜁니다.")
 
     print("\n🔍 S3 이미지 탐색 및 DB 저장 중...")
     upsert_cnt = store_images(conn, items)

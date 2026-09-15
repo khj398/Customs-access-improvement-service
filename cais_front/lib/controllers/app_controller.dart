@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../models/item.dart';
+import '../screens/login_screen.dart';
 import '../services/api_service.dart';
 import '../services/api_config.dart';
 import '../services/local_notification_service.dart';
@@ -68,6 +69,7 @@ class AppController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    ApiService.onUnauthorized = _handleUnauthorized;
     loadRootCategories();
     loadCategoryStats();
     _initData();
@@ -98,6 +100,15 @@ class AppController extends GetxController {
     baseLocation.value = await _api.fetchBaseLocation();
   }
 
+  /// 로그인이 만료된 채로 사용자가 뭔가를 시도했을 때(401) 호출됨.
+  /// 이유를 알려준 뒤 로그인 화면으로 보낸다 — 예고 없이 튕기면 오류처럼 보이므로.
+  void _handleUnauthorized() {
+    wishlistIds.clear();
+    ApiService.logout();
+    _toast('로그인이 만료되었습니다. 다시 로그인해주세요');
+    Get.offAll(() => const LoginScreen(), transition: Transition.fadeIn);
+  }
+
   Future<void> setLocationFromGps({String? label}) async {
     try {
       var permission = await Geolocator.checkPermission();
@@ -119,6 +130,20 @@ class AppController extends GetxController {
       loadNearbyCustoms();
     } catch (_) {
       _toast('위치를 가져오지 못했습니다');
+    }
+  }
+
+  /// 지도에서 직접 고른 좌표로 위치 저장 (지도 드래그 → 확인 화면에서 사용)
+  Future<bool> setLocationFromCoords(double latitude, double longitude, {String? label}) async {
+    try {
+      final loc = await _api.updateBaseLocationGps(latitude, longitude, label: label);
+      baseLocation.value = loc;
+      _toast('위치가 저장되었습니다');
+      loadNearbyCustoms();
+      return true;
+    } catch (_) {
+      _toast('위치 저장에 실패했습니다');
+      return false;
     }
   }
 
@@ -406,7 +431,7 @@ class AppController extends GetxController {
     final requestId = ++_autocompleteRequestId;
     _autocompleteDebounce = Timer(const Duration(milliseconds: 200), () async {
       try {
-        final results = await _api.fetchAutocomplete(q);
+        final results = await _api.fetchAutocomplete(q, categoryId: activeCategoryId);
         // 응답이 돌아왔을 때 현재 ID와 다르면 더 최신 요청이 있으므로 버림
         if (requestId == _autocompleteRequestId) {
           suggestions.assignAll(results);
@@ -528,6 +553,19 @@ class AppController extends GetxController {
       final d = i.endDay;
       return d.year == day.year && d.month == day.month && d.day == day.day;
     }).toList();
+  }
+
+  /// 검색 탭 상단 'DISCOVER' 탭 시 카테고리/검색어 필터를 모두 지우고 전체 목록으로 복귀
+  Future<void> resetDiscover() async {
+    newDropsMode.value = false;
+    activeL1.value = null;
+    activeL2.value = null;
+    activeL3.value = null;
+    l2Categories.clear();
+    l3Categories.clear();
+    searchQuery.value = '';
+    clearSuggestions();
+    await loadSearchItems();
   }
 
   void goToSearch({bool newDrops = false}) {

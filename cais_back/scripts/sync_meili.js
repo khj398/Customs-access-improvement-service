@@ -20,10 +20,13 @@ async function setup() {
   ]);
 
   // 필터 가능 필드 (카테고리·세관 필터용)
+  // pbacEndDttmEpoch: 검색 시점마다 "지금 이 순간" 기준으로 마감 여부를 판정하기 위한 숫자(ms) 필드.
+  // status는 동기화 시점에 미리 계산해 굳힌 값이라 동기화 주기만큼 지연이 생기므로 필터링에는 쓰지 않는다.
   await index.updateFilterableAttributes([
     'categoryId',
     'cstmSgn',
     'status',
+    'pbacEndDttmEpoch',
   ]);
 
   // 정렬 가능 필드
@@ -101,6 +104,7 @@ async function sync() {
     pbacPrngPrc:  Number(r.pbacPrngPrc) || 0,
     pbacStrtDttm: r.pbacStrtDttm ? new Date(r.pbacStrtDttm).toISOString() : null,
     pbacEndDttm:  r.pbacEndDttm  ? new Date(r.pbacEndDttm).toISOString()  : null,
+    pbacEndDttmEpoch: r.pbacEndDttm ? new Date(r.pbacEndDttm).getTime() : 0,
     cstmSgn:      r.cstmSgn || '',
     cstmName:     r.cstmName || '',
     categoryId:   r.categoryId || null,

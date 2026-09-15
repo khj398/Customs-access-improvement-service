@@ -31,15 +31,24 @@ exports.geocodeAddress = async (address) => {
   };
 };
 
-// 좌표(GPS)를 받아 사람이 읽을 수 있는 주소 문자열로 변환. 매칭 실패 시 null.
-exports.reverseGeocodeAddress = async (latitude, longitude) => {
+// 좌표(GPS)를 받아 도로명/지번 주소를 함께 반환. 매칭 실패 시 둘 다 null.
+exports.reverseGeocodeDetailed = async (latitude, longitude) => {
   const { data } = await axios.get(KAKAO_REVERSE_GEOCODE_URL, {
     params: { x: longitude, y: latitude },
     headers: _authHeader(),
   });
 
   const first = data.documents && data.documents[0];
-  if (!first) return null;
+  if (!first) return { roadAddress: null, jibunAddress: null };
 
-  return first.road_address?.address_name || first.address?.address_name || null;
+  return {
+    roadAddress: first.road_address?.address_name || null,
+    jibunAddress: first.address?.address_name || null,
+  };
+};
+
+// 좌표(GPS)를 받아 사람이 읽을 수 있는 주소 문자열로 변환. 매칭 실패 시 null.
+exports.reverseGeocodeAddress = async (latitude, longitude) => {
+  const { roadAddress, jibunAddress } = await exports.reverseGeocodeDetailed(latitude, longitude);
+  return roadAddress || jibunAddress;
 };

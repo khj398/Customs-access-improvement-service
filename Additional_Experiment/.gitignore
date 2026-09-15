@@ -1,0 +1,13 @@
+# Additional_Experiment 전용 무시 규칙
+
+# 자격 정보 (계획서 5.4 경고 3)
+config/.env
+
+# 스냅샷의 대용량 사본·DB 덤프 (COMMIT.txt / SNAPSHOT_INFO.md 는 커밋)
+snapshot/eval_snapshot_*/*.json
+snapshot/eval_snapshot_*/db_before.sql
+snapshot/eval_snapshot_*/db_before_csv/
+
+# 파이썬 캐시
+__pycache__/
+*.pyc

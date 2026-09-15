@@ -54,18 +54,16 @@ exports.search = async ({ keyword, categoryId, cstmSgn, page = 1, limit = 20 }) 
 };
 
 // ── 자동완성 ─────────────────────────────────────────────────────────────────
-exports.autocomplete = async (q) => {
+// categoryId가 있으면 현재 선택된 카테고리(및 하위) 범위 안에서만 제안한다.
+// (그래야 제안을 골랐을 때 실제 검색 결과가 0건이 되는 일이 없음)
+exports.autocomplete = async (q, categoryId) => {
   if (!q || q.trim().length < 1) return [];
 
-  const result = await index().searchForFacetValues({
-    facetName: 'categoryName',
-    facetQuery: q,
-    limit: 5,
-  }).catch(() => null);
+  const catFilter = await buildCategoryFilter(categoryId);
 
-  // searchForFacetValues는 카테고리에만 적용. 물품명 자동완성은 일반 검색으로
   const hits = await index().search(q, {
     limit: 8,
+    filter: catFilter || undefined,
     attributesToRetrieve: ['cmdtNm'],
     attributesToSearchOn: ['cmdtNm', 'tokens'],
   });

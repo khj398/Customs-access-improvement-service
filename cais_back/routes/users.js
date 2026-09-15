@@ -21,6 +21,9 @@ router.put('/me/location', auth, userController.updateLocation);
 router.get('/me/base-location', auth, userController.getBaseLocation);
 router.put('/me/base-location', auth, userController.updateBaseLocation);
 
+// 좌표 → 주소 미리보기 (저장 안 함) — 지도 화면에서 드래그 중 주소 표시용
+router.get('/me/base-location/reverse-geocode', auth, userController.previewReverseGeocode);
+
 // FCM 기기 토큰 등록/삭제
 router.post('/me/device-token',   auth, userController.registerDeviceToken);
 router.delete('/me/device-token', auth, userController.removeDeviceToken);

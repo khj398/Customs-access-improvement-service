@@ -86,8 +86,15 @@ class _SearchTabState extends State<SearchTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('DISCOVER',
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF1A1B33))),
+                GestureDetector(
+                  onTap: () {
+                    _inputCtrl.clear();
+                    _focus.unfocus();
+                    _ctrl.resetDiscover();
+                  },
+                  child: const Text('DISCOVER',
+                      style: TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Color(0xFF1A1B33))),
+                ),
                 const SizedBox(height: 14),
                 // Search bar
                 Obx(() {
@@ -176,12 +183,13 @@ class _SearchTabState extends State<SearchTab> {
                   );
                 }),
 
-                // 자동완성 제안 목록
+                // 자동완성 제안 목록 (화면/키보드 높이를 넘어서면 내부 스크롤)
                 Obx(() {
                   final sugs = _ctrl.suggestions.toList();
                   if (sugs.isEmpty) return const SizedBox.shrink();
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
+                    constraints: const BoxConstraints(maxHeight: 260),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       border: Border.all(color: const Color(0xFFE2E4EA)),
@@ -194,11 +202,12 @@ class _SearchTabState extends State<SearchTab> {
                         ),
                       ],
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: sugs.asMap().entries.map((entry) {
-                        final i = entry.key;
-                        final s = entry.value;
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      padding: EdgeInsets.zero,
+                      itemCount: sugs.length,
+                      itemBuilder: (_, i) {
+                        final s = sugs[i];
                         return InkWell(
                           onTap: () => _onSuggestionTap(s),
                           borderRadius: BorderRadius.vertical(
@@ -230,7 +239,7 @@ class _SearchTabState extends State<SearchTab> {
                             ),
                           ),
                         );
-                      }).toList(),
+                      },
                     ),
                   );
                 }),

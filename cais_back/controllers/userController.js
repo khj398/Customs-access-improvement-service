@@ -77,6 +77,24 @@ exports.getBaseLocation = async (req, res) => {
   }
 };
 
+// 좌표만으로 주소를 미리보기 (저장하지 않음) — 지도 드래그 중 실시간 주소 표시용
+exports.previewReverseGeocode = async (req, res) => {
+  try {
+    const { latitude, longitude } = req.query;
+    if (latitude == null || longitude == null) {
+      return res.status(400).json({ error: 'latitude/longitude가 필요합니다' });
+    }
+    const { roadAddress, jibunAddress } = await geocodeService.reverseGeocodeDetailed(
+      parseFloat(latitude),
+      parseFloat(longitude),
+    );
+    res.json({ roadAddress, jibunAddress });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: '주소를 확인하지 못했습니다' });
+  }
+};
+
 // GPS로 받은 좌표(latitude/longitude) 또는 수동 입력 주소(address) 둘 중 하나로 위치 설정
 exports.updateBaseLocation = async (req, res) => {
   try {

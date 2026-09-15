@@ -2,12 +2,18 @@ import hashlib
 import json
 import os
 import re
+import sys
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 from pathlib import Path
 
 import pymysql
+
+# Windows 콘솔(cp949 등)에서 이모지 출력 시 UnicodeEncodeError로 죽는 것을 방지
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 
 
 # =========================================================

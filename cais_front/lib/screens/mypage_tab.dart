@@ -9,10 +9,12 @@ import '../services/api_service.dart';
 import '../utils/format.dart';
 import 'detail_screen.dart';
 import 'login_screen.dart';
+import 'map_picker_screen.dart';
 
 const _kPrimary = Color(0xFF3B82F6);
 const _kPrimaryDark = Color(0xFF171A3B);
 const _kSuccess = Color(0xFF10B981);
+const _kDefaultMapCenter = LatLng(37.5665, 126.9780); // 위치 미설정 시 서울시청 기준
 
 class MypageTab extends StatefulWidget {
   const MypageTab({super.key});
@@ -139,47 +141,112 @@ class _MypageTabState extends State<MypageTab> {
                     final loc = ctrl.baseLocation.value;
                     final lat = double.tryParse('${loc?['baseLatitude']}');
                     final lng = double.tryParse('${loc?['baseLongitude']}');
-                    if (lat == null || lng == null) return const SizedBox.shrink();
-                    final point = LatLng(lat, lng);
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: SizedBox(
-                        height: 160,
-                        child: FlutterMap(
-                          options: MapOptions(initialCenter: point, initialZoom: 15),
-                          children: [
-                            TileLayer(
-                              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                              userAgentPackageName: 'com.example.cais_front',
-                            ),
-                            MarkerLayer(markers: [
-                              Marker(
-                                point: point,
-                                width: 36,
-                                height: 36,
-                                child: const Icon(Icons.location_on, color: _kPrimary, size: 36),
+                    final point = (lat != null && lng != null) ? LatLng(lat, lng) : _kDefaultMapCenter;
+
+                    return GestureDetector(
+                      onTap: () => _openMapPicker(context, point),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: SizedBox(
+                          height: 220,
+                          child: Stack(
+                            children: [
+                              // point가 바뀔 때마다 새 위젯으로 취급되도록 key를 줘서
+                              // initialCenter 변경이 실제로 지도 이동에 반영되게 함
+                              // (FlutterMap은 같은 위젯 인스턴스에서는 initialCenter를 다시 읽지 않음)
+                              FlutterMap(
+                                key: ValueKey('${point.latitude}_${point.longitude}'),
+                                options: MapOptions(initialCenter: point, initialZoom: 15),
+                                children: [
+                                  TileLayer(
+                                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                    userAgentPackageName: 'com.example.cais_front',
+                                  ),
+                                  if (lat != null && lng != null)
+                                    MarkerLayer(markers: [
+                                      Marker(
+                                        point: point,
+                                        width: 36,
+                                        height: 36,
+                                        child: const Icon(Icons.location_on, color: _kPrimary, size: 36),
+                                      ),
+                                    ]),
+                                  RichAttributionWidget(
+                                    alignment: AttributionAlignment.bottomRight,
+                                    showFlutterMapAttribution: false,
+                                    attributions: [
+                                      TextSourceAttribution('© OpenStreetMap contributors'),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ]),
-                            RichAttributionWidget(
-                              alignment: AttributionAlignment.bottomRight,
-                              showFlutterMapAttribution: false,
-                              attributions: [
-                                TextSourceAttribution('© OpenStreetMap contributors'),
-                              ],
-                            ),
-                          ],
+                              if (lat == null || lng == null)
+                                IgnorePointer(
+                                  child: Container(
+                                    alignment: Alignment.topCenter,
+                                    padding: const EdgeInsets.only(top: 10),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.55),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text('지도에서 위치를 설정해보세요',
+                                          style: TextStyle(color: Colors.white, fontSize: 11)),
+                                    ),
+                                  ),
+                                ),
+                              Positioned(
+                                right: 8,
+                                bottom: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.55),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.open_in_full, size: 12, color: Colors.white),
+                                      SizedBox(width: 4),
+                                      Text('지도에서 위치 확인',
+                                          style: TextStyle(color: Colors.white, fontSize: 11)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
                   }),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => ctrl.setLocationFromGps(),
-                      icon: const Icon(Icons.gps_fixed, size: 18),
-                      label: const Text('현재 위치로 설정'),
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => ctrl.setLocationFromGps(),
+                          icon: const Icon(Icons.gps_fixed, size: 18),
+                          label: const Text('현재 위치로 설정'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Obx(() {
+                          final loc = ctrl.baseLocation.value;
+                          final lat = double.tryParse('${loc?['baseLatitude']}');
+                          final lng = double.tryParse('${loc?['baseLongitude']}');
+                          final point = (lat != null && lng != null) ? LatLng(lat, lng) : _kDefaultMapCenter;
+                          return OutlinedButton.icon(
+                            onPressed: () => _openMapPicker(context, point),
+                            icon: const Icon(Icons.map_outlined, size: 18),
+                            label: const Text('지도에서 확인'),
+                          );
+                        }),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 10),
                   Row(
@@ -429,6 +496,13 @@ class _MypageTabState extends State<MypageTab> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _openMapPicker(BuildContext context, LatLng initialCenter) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => MapPickerScreen(initialCenter: initialCenter)),
     );
   }
 

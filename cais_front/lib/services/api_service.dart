@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:get_storage/get_storage.dart';
 import 'package:http/http.dart' as http;
 import '../models/item.dart';
@@ -27,12 +28,28 @@ class ApiService {
   static String  get userName  => _box.read<String>(_kUserName) ?? '';
   static String  get userEmail => _box.read<String>(_kEmail) ?? '';
 
+  /// 세션이 만료된 토큰으로 사용자가 직접 시도한 요청이 401을 받았을 때 한 번 호출됨
+  /// (자동으로 도는 백그라운드 조회에는 걸지 않음 — 갑자기 로그아웃되는 느낌을 피하기 위함)
+  static void Function()? onUnauthorized;
+  static bool _unauthorizedHandled = false;
+
+  static void _notifyUnauthorized() {
+    if (_unauthorizedHandled) return;
+    _unauthorizedHandled = true;
+    onUnauthorized?.call();
+  }
+
+  void _checkUnauthorized(http.Response res) {
+    if (res.statusCode == 401) _notifyUnauthorized();
+  }
+
   Map<String, String> _authHeaders() => {
     'Content-Type': 'application/json',
     if (token != null) 'Authorization': 'Bearer $token',
   };
 
   void _saveAuth(Map<String, dynamic> data) {
+    _unauthorizedHandled = false;
     _box.write(_kToken,    data['token']);
     _box.write(_kUserId,   data['userId']);
     _box.write(_kUserName, data['userName']);
@@ -62,6 +79,7 @@ class ApiService {
   }
 
   static void logout() {
+    _unauthorizedHandled = false;
     _box.remove(_kToken);
     _box.remove(_kUserId);
     _box.remove(_kUserName);
@@ -148,9 +166,33 @@ class ApiService {
       headers: _authHeaders(),
       body: jsonEncode({'latitude': latitude, 'longitude': longitude, if (label != null) 'label': label}),
     ).timeout(_timeout);
+    _checkUnauthorized(res);
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode != 200) throw ApiException(body['error'] ?? '위치 저장에 실패했습니다', statusCode: res.statusCode);
     return body['location'] as Map<String, dynamic>;
+  }
+
+  /// 좌표 → 주소 미리보기 (저장 안 함). 실패 시 둘 다 null.
+  Future<Map<String, String?>> reverseGeocode(double latitude, double longitude) async {
+    final uri = Uri.parse('$_base/api/users/me/base-location/reverse-geocode').replace(
+      queryParameters: {'latitude': '$latitude', 'longitude': '$longitude'},
+    );
+    try {
+      final res = await http.get(uri, headers: _authHeaders()).timeout(_timeout);
+      _checkUnauthorized(res);
+      if (res.statusCode != 200) {
+        debugPrint('reverseGeocode 실패: HTTP ${res.statusCode} ${res.body}');
+        return {'roadAddress': null, 'jibunAddress': null};
+      }
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      return {
+        'roadAddress': body['roadAddress'] as String?,
+        'jibunAddress': body['jibunAddress'] as String?,
+      };
+    } catch (e) {
+      debugPrint('reverseGeocode 예외: $e');
+      return {'roadAddress': null, 'jibunAddress': null};
+    }
   }
 
   Future<Map<String, dynamic>> updateBaseLocationAddress(String address, {String? label}) async {
@@ -159,11 +201,14 @@ class ApiService {
       headers: _authHeaders(),
       body: jsonEncode({'address': address, if (label != null) 'label': label}),
     ).timeout(_timeout);
+    _checkUnauthorized(res);
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode != 200) throw ApiException(body['error'] ?? '주소를 찾을 수 없습니다', statusCode: res.statusCode);
     return body['location'] as Map<String, dynamic>;
   }
 
+  // 앱 시작 시 자동으로도 호출되는 백그라운드 동기화라 401이어도 세션 만료 처리를 걸지 않음
+  // (사용자가 누른 적 없는데 갑자기 로그인 화면으로 튕기는 걸 방지)
   Future<void> registerDeviceToken(String fcmToken, {String platform = 'ANDROID'}) async {
     if (!isLoggedIn) return;
     await http.post(
@@ -203,6 +248,7 @@ class ApiService {
       headers: _authHeaders(),
       body: jsonEncode({'keyword': keyword}),
     ).timeout(_timeout);
+    _checkUnauthorized(res);
     if (res.statusCode != 200) {
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       throw ApiException(body['error'] ?? '구독 등록에 실패했습니다', statusCode: res.statusCode);
@@ -210,18 +256,20 @@ class ApiService {
   }
 
   Future<void> removeSearchSubscription(int subscriptionId) async {
-    await http.delete(
+    final res = await http.delete(
       Uri.parse('$_base/api/search-subscriptions/$subscriptionId'),
       headers: _authHeaders(),
     ).timeout(_timeout);
+    _checkUnauthorized(res);
   }
 
   Future<void> toggleSearchSubscription(int subscriptionId, bool enabled) async {
-    await http.patch(
+    final res = await http.patch(
       Uri.parse('$_base/api/search-subscriptions/$subscriptionId'),
       headers: _authHeaders(),
       body: jsonEncode({'enabled': enabled}),
     ).timeout(_timeout);
+    _checkUnauthorized(res);
   }
 
   Future<Map<int, int>> fetchCategoryStats() async {
@@ -308,15 +356,17 @@ class ApiService {
         'cmdtLnNo': cmdtLnNo.toString(),
       }),
     ).timeout(_timeout);
+    _checkUnauthorized(res);
     if (res.statusCode != 200) throw ApiException('찜 처리 실패', statusCode: res.statusCode);
     final data = jsonDecode(res.body) as Map<String, dynamic>;
     return data['liked'] as bool;
   }
 
-  Future<List<String>> fetchAutocomplete(String q) async {
+  Future<List<String>> fetchAutocomplete(String q, {int? categoryId}) async {
     if (q.trim().isEmpty) return [];
-    final uri = Uri.parse('$_base/api/items/autocomplete')
-        .replace(queryParameters: {'q': q});
+    final uri = Uri.parse('$_base/api/items/autocomplete').replace(
+      queryParameters: {'q': q, if (categoryId != null) 'categoryId': '$categoryId'},
+    );
     try {
       final res = await http.get(uri).timeout(_timeout);
       if (res.statusCode != 200) return [];
